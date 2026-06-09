@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aphelion Aerospace — Beyond the Horizon</title>
+  <meta name="description" content="Aphelion Aerospace builds reusable launch systems and orbital infrastructure to make space access routine, affordable, and sustainable." />
+
+  <!-- Typography: Space Grotesk (display) + Inter (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ============================ Design Tokens ============================ */
+    :root {
+      /* Color (Dark Mode OLED — from UI/UX Pro Max) */
+      --color-bg:            #0B0B10;
+      --color-surface:       #121219;
+      --color-surface-2:     #17171F;
+      --color-foreground:    #F8FAFC;
+      --color-secondary:     #94A3B8;
+      --color-muted:         #232328;
+      --color-border:        #1E293B;
+      --color-accent:        #3B82F6;
+      --color-accent-hover:  #60A5FA;
+      --color-accent-soft:   rgba(59, 130, 246, 0.14);
+      --color-on-accent:     #0B0B10;
+
+      /* Type */
+      --font-display: 'Space Grotesk', system-ui, sans-serif;
+      --font-body: 'Inter', system-ui, sans-serif;
+
+      /* Spacing scale (4/8pt rhythm) */
+      --space-1: 0.25rem; --space-2: 0.5rem;  --space-3: 0.75rem;
+      --space-4: 1rem;    --space-6: 1.5rem;  --space-8: 2rem;
+      --space-12: 3rem;   --space-16: 4rem;   --space-24: 6rem;
+
+      /* Radius / elevation */
+      --radius: 14px;
+      --radius-lg: 22px;
+      --shadow-soft: 0 1px 0 rgba(255,255,255,0.04) inset, 0 20px 50px -20px rgba(0,0,0,0.6);
+      --ring: 0 0 0 3px rgba(59,130,246,0.45);
+
+      --container: 1200px;
+      --z-nav: 100;
+    }
+
+    /* ============================ Reset / Base ============================ */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+    body {
+      margin: 0;
+      background: var(--color-bg);
+      color: var(--color-foreground);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; margin: 0; letter-spacing: -0.02em; }
+    p { margin: 0; }
+    a { color: inherit; text-decoration: none; }
+    img, svg { display: block; max-width: 100%; }
+
+    :focus-visible {
+      outline: none;
+      box-shadow: var(--ring);
+      border-radius: 8px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: var(--container);
+      margin-inline: auto;
+      padding-inline: var(--space-6);
+    }
+
+    .skip-link {
+      position: absolute; left: var(--space-4); top: -120px;
+      background: var(--color-accent); color: var(--color-on-accent);
+      padding: var(--space-3) var(--space-4); border-radius: 10px;
+      font-weight: 600; z-index: 200; transition: top .2s ease;
+    }
+    .skip-link:focus { top: var(--space-4); }
+
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: var(--space-2);
+      font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--color-secondary);
+    }
+    .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-accent); box-shadow: 0 0 12px 2px rgba(59,130,246,0.7); }
+
+    /* ============================ Buttons ============================ */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+      font-family: var(--font-body); font-weight: 600; font-size: 0.95rem;
+      min-height: 48px; padding: 0 var(--space-6);
+      border-radius: 12px; border: 1px solid transparent; cursor: pointer;
+      transition: transform .18s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease;
+      white-space: nowrap;
+    }
+    .btn:active { transform: translateY(1px) scale(0.99); }
+    .btn-primary { background: var(--color-accent); color: #fff; box-shadow: 0 8px 30px -8px rgba(59,130,246,0.6); }
+    .btn-primary:hover { background: var(--color-accent-hover); }
+    .btn-ghost { background: transparent; color: var(--color-foreground); border-color: var(--color-border); }
+    .btn-ghost:hover { border-color: var(--color-secondary); background: rgba(255,255,255,0.03); }
+    @media (prefers-reduced-motion: reduce) { .btn, .btn:active { transition: none; transform: none; } }
+
+    /* ============================ Nav ============================ */
+    header.nav {
+      position: sticky; top: 0; z-index: var(--z-nav);
+      background: rgba(11, 11, 16, 0.72);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; }
+    .brand { display: inline-flex; align-items: center; gap: var(--space-3); font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; }
+    .brand .mark { width: 30px; height: 30px; color: var(--color-accent); }
+    .nav-links { display: none; align-items: center; gap: var(--space-8); }
+    .nav-links a { color: var(--color-secondary); font-size: 0.95rem; font-weight: 500; transition: color .18s ease; }
+    .nav-links a:hover { color: var(--color-foreground); }
+    .nav-cta { display: none; }
+    @media (min-width: 900px) {
+      .nav-links { display: flex; }
+      .nav-cta { display: inline-flex; }
+    }
+
+    /* ============================ Hero ============================ */
+    .hero { position: relative; padding-top: var(--space-24); padding-bottom: var(--space-24); overflow: hidden; }
+    .stars, .glow { position: absolute; inset: 0; pointer-events: none; }
+    .glow {
+      background:
+        radial-gradient(60% 50% at 50% -10%, rgba(59,130,246,0.18), transparent 70%),
+        radial-gradient(40% 40% at 85% 10%, rgba(99,102,241,0.10), transparent 70%);
+    }
+    .stars { background-image:
+        radial-gradient(1px 1px at 20% 30%, #fff, transparent),
+        radial-gradient(1px 1px at 60% 70%, rgba(255,255,255,0.8), transparent),
+        radial-gradient(1.5px 1.5px at 80% 20%, #fff, transparent),
+        radial-gradient(1px 1px at 35% 80%, rgba(255,255,255,0.7), transparent),
+        radial-gradient(1px 1px at 90% 60%, rgba(255,255,255,0.65), transparent),
+        radial-gradient(1.5px 1.5px at 10% 60%, #fff, transparent);
+      opacity: 0.5;
+      animation: twinkle 6s ease-in-out infinite alternate;
+    }
+    @keyframes twinkle { from { opacity: 0.35; } to { opacity: 0.6; } }
+    @media (prefers-reduced-motion: reduce) { .stars { animation: none; } }
+
+    .hero-grid { position: relative; display: grid; gap: var(--space-12); align-items: center; }
+    @media (min-width: 980px) { .hero-grid { grid-template-columns: 1.05fr 0.95fr; gap: var(--space-16); } }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4.25rem); font-weight: 700; margin-top: var(--space-6);
+      background: linear-gradient(180deg, #FFFFFF 0%, rgba(248,250,252,0.72) 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .hero p.lede { color: var(--color-secondary); font-size: clamp(1.05rem, 2.4vw, 1.2rem); margin-top: var(--space-6); max-width: 56ch; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: var(--space-4); margin-top: var(--space-8); }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-12); }
+    .hero-meta .stat .num { font-family: var(--font-display); font-weight: 700; font-size: 1.75rem; }
+    .hero-meta .stat .lbl { color: var(--color-secondary); font-size: 0.875rem; }
+
+    /* Hero visual — orbital craft card */
+    .orbit-card {
+      position: relative; aspect-ratio: 4 / 5; border-radius: var(--radius-lg);
+      background:
+        radial-gradient(120% 90% at 50% 0%, rgba(59,130,246,0.22), transparent 55%),
+        linear-gradient(180deg, var(--color-surface-2), var(--color-surface));
+      border: 1px solid var(--color-border); box-shadow: var(--shadow-soft);
+      overflow: hidden; display: grid; place-items: center;
+    }
+    .orbit-ring { position: absolute; border: 1px solid rgba(148,163,184,0.18); border-radius: 50%; }
+    .orbit-ring.r1 { width: 78%; aspect-ratio: 1; }
+    .orbit-ring.r2 { width: 54%; aspect-ratio: 1; border-color: rgba(148,163,184,0.26); }
+    .planet { width: 38%; aspect-ratio: 1; border-radius: 50%;
+      background: radial-gradient(circle at 32% 28%, #6ea8fe, #1d4ed8 55%, #0b1f4d 100%);
+      box-shadow: 0 0 60px -8px rgba(59,130,246,0.6), inset -10px -14px 40px rgba(0,0,0,0.55);
+    }
+    .satellite { position: absolute; width: 16px; height: 16px; border-radius: 4px; background: var(--color-accent);
+      box-shadow: 0 0 16px 2px rgba(59,130,246,0.8); top: 11%; left: 50%;
+      transform-origin: center; animation: orbit 14s linear infinite; }
+    @keyframes orbit { from { transform: rotate(0) translateY(-150px) rotate(0); } to { transform: rotate(360deg) translateY(-150px) rotate(-360deg); } }
+    @media (prefers-reduced-motion: reduce) { .satellite { animation: none; } }
+    .orbit-badge {
+      position: absolute; bottom: var(--space-6); left: var(--space-6); right: var(--space-6);
+      display: flex; align-items: center; gap: var(--space-3);
+      background: rgba(11,11,16,0.6); border: 1px solid var(--color-border);
+      border-radius: 12px; padding: var(--space-3) var(--space-4); backdrop-filter: blur(6px);
+    }
+    .orbit-badge .live { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 10px 2px rgba(34,197,94,0.7); }
+    .orbit-badge .t { font-size: 0.85rem; color: var(--color-secondary); }
+    .orbit-badge .t b { color: var(--color-foreground); font-weight: 600; }
+
+    /* ============================ Trust bar ============================ */
+    .trust { border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); padding-block: var(--space-8); }
+    .trust p { text-align: center; color: var(--color-secondary); font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: var(--space-6); }
+    .trust-logos { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-8) var(--space-12); opacity: 0.75; }
+    .trust-logos span { font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; color: var(--color-secondary); }
+
+    /* ============================ Sections ============================ */
+    section { padding-block: var(--space-24); }
+    .section-head { max-width: 60ch; margin-bottom: var(--space-16); }
+    .section-head h2 { font-size: clamp(1.9rem, 4vw, 2.75rem); font-weight: 700; margin-top: var(--space-4); }
+    .section-head p { color: var(--color-secondary); margin-top: var(--space-4); font-size: 1.05rem; }
+
+    /* Bento features */
+    .bento { display: grid; gap: var(--space-4); grid-template-columns: 1fr; }
+    @media (min-width: 720px) { .bento { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 1040px) { .bento { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; } }
+    .card {
+      background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface));
+      border: 1px solid var(--color-border); border-radius: var(--radius);
+      padding: var(--space-8); transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    .card:hover { transform: translateY(-4px); border-color: rgba(59,130,246,0.5); box-shadow: 0 24px 50px -28px rgba(59,130,246,0.5); }
+    @media (prefers-reduced-motion: reduce) { .card:hover { transform: none; } }
+    .card .icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+      background: var(--color-accent-soft); color: var(--color-accent); margin-bottom: var(--space-6); }
+    .card .icon svg { width: 24px; height: 24px; }
+    .card h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: var(--space-3); }
+    .card p { color: var(--color-secondary); font-size: 0.975rem; }
+    .card.wide { grid-column: 1 / -1; }
+    @media (min-width: 1040px) { .card.span2 { grid-column: span 2; } }
+
+    /* Specs / stats */
+    .specs { background: var(--color-surface); border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); }
+    .specs-grid { display: grid; gap: var(--space-8); grid-template-columns: repeat(2, 1fr); text-align: center; }
+    @media (min-width: 880px) { .specs-grid { grid-template-columns: repeat(4, 1fr); } }
+    .specs .num { font-family: var(--font-display); font-weight: 700; font-size: clamp(2.2rem, 5vw, 3.25rem);
+      background: linear-gradient(180deg, #fff, rgba(248,250,252,0.7)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .specs .lbl { color: var(--color-secondary); margin-top: var(--space-2); font-size: 0.95rem; }
+
+    /* Mission / timeline */
+    .timeline { display: grid; gap: var(--space-4); }
+    .tl-item { display: grid; grid-template-columns: auto 1fr; gap: var(--space-6); align-items: start;
+      padding: var(--space-6); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); }
+    .tl-item .when { font-family: var(--font-display); font-weight: 600; color: var(--color-accent); font-size: 0.95rem; min-width: 64px; }
+    .tl-item h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: var(--space-2); }
+    .tl-item p { color: var(--color-secondary); font-size: 0.95rem; }
+    .tl-item .tag { display: inline-block; margin-top: var(--space-3); font-size: 0.75rem; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-secondary);
+      border: 1px solid var(--color-border); border-radius: 999px; padding: 2px 10px; }
+
+    /* CTA */
+    .cta-wrap { position: relative; border-radius: var(--radius-lg); overflow: hidden;
+      border: 1px solid var(--color-border); padding: clamp(2.5rem, 6vw, 5rem) var(--space-8); text-align: center;
+      background: radial-gradient(80% 120% at 50% 0%, rgba(59,130,246,0.22), transparent 60%), var(--color-surface); }
+    .cta-wrap h2 { font-size: clamp(1.9rem, 4.5vw, 3rem); font-weight: 700; max-width: 18ch; margin-inline: auto; }
+    .cta-wrap p { color: var(--color-secondary); margin-top: var(--space-4); max-width: 52ch; margin-inline: auto; }
+    .cta-actions { display: flex; flex-wrap: wrap; gap: var(--space-4); justify-content: center; margin-top: var(--space-8); }
+
+    /* Footer */
+    footer { border-top: 1px solid var(--color-border); padding-block: var(--space-16) var(--space-12); }
+    .foot-grid { display: grid; gap: var(--space-12); grid-template-columns: 1fr; }
+    @media (min-width: 720px) { .foot-grid { grid-template-columns: 1.4fr 1fr 1fr 1fr; } }
+    .foot-col h4 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-secondary); margin-bottom: var(--space-4); }
+    .foot-col a { display: block; color: var(--color-secondary); padding: var(--space-2) 0; font-size: 0.95rem; transition: color .15s ease; }
+    .foot-col a:hover { color: var(--color-foreground); }
+    .foot-bottom { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; justify-content: space-between;
+      margin-top: var(--space-16); padding-top: var(--space-8); border-top: 1px solid var(--color-border); color: var(--color-secondary); font-size: 0.875rem; }
+
+    /* Scroll reveal */
+    .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- ============================ NAV ============================ -->
+  <header class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="#" aria-label="Aphelion Aerospace home">
+        <svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 2c3 3.5 4.5 7 4.5 10.5A4.5 4.5 0 0 1 12 17a4.5 4.5 0 0 1-4.5-4.5C7.5 9 9 5.5 12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <circle cx="12" cy="11" r="1.8" fill="currentColor"/>
+          <path d="M7.6 16.5C5.5 17.5 4 19.4 4 22c2.6 0 4.5-1.5 5.5-3.6M16.4 16.5c2.1 1 3.6 2.9 3.6 5.5-2.6 0-4.5-1.5-5.5-3.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        Aphelion
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#mission">Mission</a>
+        <a href="#vehicles">Vehicles</a>
+        <a href="#specs">Specs</a>
+        <a href="#roadmap">Roadmap</a>
+      </nav>
+      <a class="btn btn-primary nav-cta" href="#contact">Request a launch</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ============================ HERO ============================ -->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="glow" aria-hidden="true"></div>
+      <div class="stars" aria-hidden="true"></div>
+      <div class="container hero-grid">
+        <div class="reveal">
+          <span class="eyebrow"><span class="dot"></span> Reusable launch &amp; orbital logistics</span>
+          <h1 id="hero-title">Make space access routine.</h1>
+          <p class="lede">Aphelion builds fully reusable launch vehicles and orbital tugs that cut the cost of reaching orbit by 10× — so your payload flies on schedule, every window.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#contact">
+              Request a launch
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+            <a class="btn btn-ghost" href="#vehicles">Explore vehicles</a>
+          </div>
+          <div class="hero-meta">
+            <div class="stat"><div class="num">142</div><div class="lbl">Successful launches</div></div>
+            <div class="stat"><div class="num">98.6%</div><div class="lbl">Mission success rate</div></div>
+            <div class="stat"><div class="num">24</div><div class="lbl">Reflights per booster</div></div>
+          </div>
+        </div>
+
+        <div class="reveal" aria-hidden="true">
+          <div class="orbit-card">
+            <div class="orbit-ring r1"></div>
+            <div class="orbit-ring r2"></div>
+            <div class="planet"></div>
+            <div class="satellite"></div>
+            <div class="orbit-badge">
+              <span class="live"></span>
+              <span class="t"><b>HELIOS-7</b> in low-Earth orbit · telemetry nominal</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ TRUST ============================ -->
+    <div class="trust">
+      <div class="container">
+        <p>Trusted by the teams building the orbital economy</p>
+        <div class="trust-logos">
+          <span>NOVA&nbsp;LABS</span><span>OrbitalEdge</span><span>STELLARIS</span>
+          <span>Vanta&nbsp;Systems</span><span>HALO&nbsp;Defense</span><span>Kepler&nbsp;Bio</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================ MISSION ============================ -->
+    <section id="mission" aria-labelledby="mission-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow"><span class="dot"></span> Why Aphelion</span>
+          <h2 id="mission-title">An end-to-end pipeline from pad to orbit.</h2>
+          <p>We own the full stack — propulsion, avionics, recovery, and orbital transfer — so payloads move from integration to their target orbit without a dozen vendors in between.</p>
+        </div>
+
+        <div class="bento" id="vehicles">
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2c3 3.5 4.5 7 4.5 10.5A4.5 4.5 0 0 1 12 17a4.5 4.5 0 0 1-4.5-4.5C7.5 9 9 5.5 12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 18c-1.6.8-2.6 2.2-2.6 4 1.8 0 3.2-1 4-2.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+            <h3>Fully reusable boosters</h3>
+            <p>Land, inspect, refuel, refly. Our two-stage system returns both stages, driving marginal launch cost toward the price of propellant.</p>
+          </article>
+          <article class="card reveal span2">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="9" ry="4" stroke="currentColor" stroke-width="1.6"/></svg></div>
+            <h3>Orbital transfer vehicles</h3>
+            <p>The Aphelion tug picks up where the upper stage stops — delivering constellations to precise planes, raising orbits, and de-orbiting debris on the return leg. One ride share, many destinations.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+            <h3>Live telemetry</h3>
+            <p>Track your payload from T-0 to deployment with sub-second telemetry and a mission console built for engineers.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l8 4v5c0 5-3.4 7.7-8 9-4.6-1.3-8-4-8-9V7l8-4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.5 12l1.8 1.8L15 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <h3>Human-rated safety</h3>
+            <p>Triple-redundant avionics and autonomous abort, certified to crewed-flight standards on every vehicle.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2v6m0 8v6M2 12h6m8 0h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.6"/></svg></div>
+            <h3>Rapid integration</h3>
+            <p>Standard payload adapters and a 30-day path from contract to flight readiness.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ SPECS ============================ -->
+    <section class="specs" id="specs" aria-labelledby="specs-title">
+      <div class="container">
+        <h2 id="specs-title" class="reveal" style="text-align:center; font-size:clamp(1.6rem,3.5vw,2.2rem); font-weight:700; margin-bottom:var(--space-16);">Performance that closes the business case</h2>
+        <div class="specs-grid">
+          <div class="reveal"><div class="num">22.8t</div><div class="lbl">Payload to LEO</div></div>
+          <div class="reveal"><div class="num">$1.1M</div><div class="lbl">Cost per reflight</div></div>
+          <div class="reveal"><div class="num">48 hr</div><div class="lbl">Booster turnaround</div></div>
+          <div class="reveal"><div class="num">5.2 m</div><div class="lbl">Fairing diameter</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ ROADMAP ============================ -->
+    <section id="roadmap" aria-labelledby="roadmap-title">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow"><span class="dot"></span> Roadmap</span>
+          <h2 id="roadmap-title">The next windows.</h2>
+          <p>A cadence you can plan a constellation around.</p>
+        </div>
+        <div class="timeline">
+          <div class="tl-item reveal"><span class="when">Q3 ’26</span><div><h3>Helios-8 — rideshare to SSO</h3><p>14 smallsat slots to sun-synchronous orbit with the Aphelion tug performing final plane insertion.</p><span class="tag">Booking open</span></div></div>
+          <div class="tl-item reveal"><span class="when">Q4 ’26</span><div><h3>First crewed demonstration</h3><p>Uncrewed-to-crewed transition flight validating life support and autonomous abort end to end.</p><span class="tag">Crew certification</span></div></div>
+          <div class="tl-item reveal"><span class="when">Q1 ’27</span><div><h3>Lunar cargo pathfinder</h3><p>Trans-lunar injection capability comes online for cargo to cislunar space.</p><span class="tag">Deep space</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ CTA ============================ -->
+    <section id="contact" aria-labelledby="cta-title">
+      <div class="container">
+        <div class="cta-wrap reveal">
+          <span class="eyebrow" style="justify-content:center;"><span class="dot"></span> Manifest is filling for 2026</span>
+          <h2 id="cta-title" style="margin-top:var(--space-4);">Put your payload on the next launch.</h2>
+          <p>Tell us your mass, orbit, and timeline. Our mission team replies within one business day with a quote and a window.</p>
+          <div class="cta-actions">
+            <a class="btn btn-primary" href="mailto:launch@aphelion.example">
+              Request a launch
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+            <a class="btn btn-ghost" href="#specs">Download payload guide</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================ FOOTER ============================ -->
+  <footer>
+    <div class="container">
+      <div class="foot-grid">
+        <div class="foot-col">
+          <a class="brand" href="#" aria-label="Aphelion Aerospace home" style="margin-bottom:var(--space-4);">
+            <svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2c3 3.5 4.5 7 4.5 10.5A4.5 4.5 0 0 1 12 17a4.5 4.5 0 0 1-4.5-4.5C7.5 9 9 5.5 12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="11" r="1.8" fill="currentColor"/></svg>
+            Aphelion
+          </a>
+          <p style="color:var(--color-secondary); max-width:34ch; font-size:0.95rem;">Reusable launch and orbital infrastructure for the companies building beyond Earth.</p>
+        </div>
+        <div class="foot-col"><h4>Vehicles</h4><a href="#vehicles">Helios booster</a><a href="#vehicles">Orbital tug</a><a href="#specs">Payload specs</a></div>
+        <div class="foot-col"><h4>Company</h4><a href="#mission">Mission</a><a href="#roadmap">Roadmap</a><a href="#">Careers</a></div>
+        <div class="foot-col"><h4>Resources</h4><a href="#">Payload guide</a><a href="#">Press kit</a><a href="#contact">Contact</a></div>
+      </div>
+      <div class="foot-bottom">
+        <span>© 2026 Aphelion Aerospace. All systems nominal.</span>
+        <span>Built with the UI/UX Pro Max design system.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Scroll reveal — progressive enhancement, respects reduced-motion
+    (function () {
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var els = document.querySelectorAll('.reveal');
+      if (reduce || !('IntersectionObserver' in window)) {
+        els.forEach(function (el) { el.classList.add('in'); });
+        return;
+      }
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+      els.forEach(function (el) { io.observe(el); });
+    })();
+  </script>
+</body>
+</html>
