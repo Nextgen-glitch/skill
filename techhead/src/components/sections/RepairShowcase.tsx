@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, Wrench } from "lucide-react";
 import { REPAIRS } from "@/lib/repairs";
 import { ASSETS } from "@/lib/assets";
 import { formatPrice } from "@/lib/format";
@@ -12,6 +13,7 @@ const easeOut = [0.16, 1, 0.3, 1] as const;
 
 export function RepairShowcase() {
   const reduce = useReducedMotion();
+  const [imgFailed, setImgFailed] = useState(false);
   return (
     <section className="relative py-20 sm:py-28" id="repairs">
       <div className="container-px grid items-center gap-14 lg:grid-cols-2">
@@ -25,13 +27,21 @@ export function RepairShowcase() {
               transition={{ duration: 1, ease: easeOut }}
               className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-white/10 shadow-glass"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={ASSETS.repair}
-                alt="A TechHead technician repairing a laptop motherboard"
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
+              {imgFailed ? (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1c1916] to-[#0f0d0b]">
+                  <div className="absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_40%,rgba(212,146,42,0.16),transparent_70%)]" />
+                  <Wrench className="relative h-20 w-20 text-accent/40" strokeWidth={1.1} />
+                </div>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={ASSETS.repair}
+                  alt="A TechHead technician repairing a laptop motherboard"
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  onError={() => setImgFailed(true)}
+                />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
             </motion.div>
 
