@@ -1,0 +1,178 @@
+[
+  {
+    "id": "p-aurora-x",
+    "name": "Aurora X Pro 5G",
+    "brand": "Nimbus",
+    "category": "Smartphones",
+    "condition": "New",
+    "price": 899,
+    "originalPrice": 999,
+    "description": "Flagship 6.7\" LTPO AMOLED smartphone with a pro-grade triple camera system and all-day battery. Sourced new, sealed and warranty-backed.",
+    "specs": [
+      "6.7\" 120Hz LTPO AMOLED",
+      "Triple 50MP camera",
+      "5000mAh • 67W fast charge",
+      "256GB storage"
+    ],
+    "image": "https://d8j0ntlcm91z4.cloudfront.net/user_3Ev5JjaoYukMOX4PjGYo9jAjk6u/hf_20260610_125040_df7f4a0b-2948-4c62-a130-477437949cc9_min.webp",
+    "rating": 4.8,
+    "reviews": 214,
+    "stock": 18,
+    "featured": true,
+    "createdAt": "2026-01-12T09:00:00.000Z"
+  },
+  {
+    "id": "p-pulse-watch",
+    "name": "Pulse Active 2",
+    "brand": "Veloce",
+    "category": "Smartwatches",
+    "condition": "New",
+    "price": 279,
+    "originalPrice": 329,
+    "description": "A bright AMOLED smartwatch with dual-band GPS, ECG and 14-day battery life. Tracks 120+ workouts and your sleep stages.",
+    "specs": [
+      "1.4\" AMOLED always-on",
+      "Dual-band GPS",
+      "ECG + SpO2",
+      "14-day battery"
+    ],
+    "image": "https://d8j0ntlcm91z4.cloudfront.net/user_3Ev5JjaoYukMOX4PjGYo9jAjk6u/hf_20260610_125043_daebf05a-fd21-42ef-822f-0d017d99e9dc_min.webp",
+    "rating": 4.7,
+    "reviews": 168,
+    "stock": 25,
+    "featured": true,
+    "createdAt": "2026-01-15T09:00:00.000Z"
+  },
+  {
+    "id": "p-echo-buds",
+    "name": "EchoBuds ANC",
+    "brand": "Sonare",
+    "category": "Audio",
+    "condition": "New",
+    "price": 149,
+    "originalPrice": 189,
+    "description": "True-wireless earbuds with adaptive active noise cancellation, spatial audio and a 36-hour charging case.",
+    "specs": [
+      "Adaptive ANC",
+      "Spatial audio",
+      "36h total battery",
+      "Wireless charging case"
+    ],
+    "image": "https://d8j0ntlcm91z4.cloudfront.net/user_3Ev5JjaoYukMOX4PjGYo9jAjk6u/hf_20260610_125046_12409bd1-ad4d-4b66-a1eb-d81d51c2a4b0_min.webp",
+    "rating": 4.6,
+    "reviews": 342,
+    "stock": 40,
+    "featured": true,
+    "createdAt": "2026-01-18T09:00:00.000Z"
+  },
+  {
+    "id": "p-aurora-lite",
+    "name": "Aurora Lite (Refurbished)",
+    "brand": "Nimbus",
+    "category": "Smartphones",
+    "condition": "Refurbished",
+    "price": 429,
+    "originalPrice": 649,
+    "description": "Certified refurbished flagship — fully tested, new battery, graded A. Big savings, same flagship feel, 12-month warranty.",
+    "specs": [
+      "6.4\" OLED",
+      "Grade A condition",
+      "New battery installed",
+      "12-month warranty"
+    ],
+    "image": null,
+    "rating": 4.5,
+    "reviews": 96,
+    "stock": 12,
+    "featured": false,
+    "createdAt": "2026-01-20T09:00:00.000Z"
+  },
+  {
+    "id": "p-slate-tab",
+    "name": "Slate Tab 11",
+    "brand": "Nimbus",
+    "category": "Tablets",
+    "condition": "New",
+    "price": 549,
+    "originalPrice": null,
+    "description": "An 11\" 120Hz tablet built for work and play, with quad speakers and stylus support for note-taking and sketching.",
+    "specs": [
+      "11\" 120Hz LCD",
+      "Quad speakers",
+      "Stylus supported",
+      "8000mAh battery"
+    ],
+    "image": null,
+    "rating": 4.6,
+    "reviews": 73,
+    "stock": 15,
+    "featured": false,
+    "createdAt": "2026-01-22T09:00:00.000Z"
+  },
+  {
+    "id": "p-hub-mini",
+    "name": "HomeHub Mini",
+    "brand": "Lumen",
+    "category": "Smart Home",
+    "condition": "New",
+    "price": 89,
+    "originalPrice": 119,
+    "description": "A compact smart-home hub with voice control, Matter support and a soft ambient display. Run your whole home from one place.",
+    "specs": [
+      "Matter + Thread",
+      "Voice assistant",
+      "Ambient display",
+      "Room-fill speaker"
+    ],
+    "image": null,
+    "rating": 4.4,
+    "reviews": 51,
+    "stock": 30,
+    "featured": false,
+    "createdAt": "2026-01-24T09:00:00.000Z"
+  },
+  {
+    "id": "p-charge-trio",
+    "name": "ChargeTrio 3-in-1",
+    "brand": "Volt",
+    "category": "Accessories",
+    "condition": "New",
+    "price": 69,
+    "originalPrice": null,
+    "description": "Fold-flat 3-in-1 wireless charger for phone, watch and earbuds. 15W fast charging with travel-ready aluminium build.",
+    "specs": [
+      "15W Qi2 charging",
+      "Charges 3 devices",
+      "Fold-flat travel design",
+      "USB-C PD adapter"
+    ],
+    "image": null,
+    "rating": 4.5,
+    "reviews": 128,
+    "stock": 60,
+    "featured": false,
+    "createdAt": "2026-01-26T09:00:00.000Z"
+  },
+  {
+    "id": "p-glow-band",
+    "name": "Glow Band 5",
+    "brand": "Veloce",
+    "category": "Smartwatches",
+    "condition": "New",
+    "price": 59,
+    "originalPrice": 79,
+    "description": "A featherweight fitness band with a vivid color display, 24/7 heart-rate and a two-week battery. Everyday tracking, made simple.",
+    "specs": [
+      "1.1\" AMOLED",
+      "24/7 heart-rate",
+      "5ATM waterproof",
+      "14-day battery"
+    ],
+    "image": null,
+    "rating": 4.3,
+    "reviews": 205,
+    "stock": 80,
+    "featured": false,
+    "createdAt": "2026-01-28T09:00:00.000Z"
+  }
+]
