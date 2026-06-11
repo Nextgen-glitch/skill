@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-ink text-brand-white font-body antialiased;
+  overflow-x: hidden;
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer components {
+  .container-x {
+    @apply mx-auto w-full max-w-7xl px-5 sm:px-8;
+  }
+
+  .section-pad {
+    @apply py-20 sm:py-28;
+  }
+
+  .eyebrow {
+    @apply inline-block text-xs font-semibold uppercase tracking-[0.25em] text-brand-red-bright;
+  }
+
+  .heading-xl {
+    @apply font-display text-4xl leading-tight sm:text-6xl lg:text-7xl;
+  }
+
+  .heading-lg {
+    @apply font-display text-3xl leading-tight sm:text-5xl;
+  }
+
+  /* Glow text for the OLED neon look */
+  .glow-text {
+    text-shadow: 0 0 18px rgba(47, 79, 214, 0.45);
+  }
+
+  /* Glass card surface */
+  .glass {
+    @apply border border-border/80 bg-white/[0.03] backdrop-blur-md;
+  }
+}
