@@ -2,9 +2,7 @@ import { artist, navLinks } from "@/lib/data";
 
 const socialLinks = [
   { label: "Instagram", href: artist.socials.instagram },
-  { label: "YouTube", href: artist.socials.youtube },
-  { label: "Spotify", href: artist.socials.spotify },
-  { label: "Apple Music", href: artist.socials.apple },
+  { label: "Facebook", href: artist.socials.facebook },
 ];
 
 export default function Footer() {

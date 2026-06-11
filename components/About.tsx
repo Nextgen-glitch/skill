@@ -1,12 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { artist } from "@/lib/data";
 import SectionHeading from "./SectionHeading";
 
 const stats = [
-  { value: "20+", label: "Years On The Mic" },
-  { value: "100+", label: "Live Shows" },
-  { value: "1", label: "City Of Brotherly Love" },
+  { value: "Philly", label: "Born & Raised" },
+  { value: "Battle Rap", label: "Legend" },
+  { value: "Live", label: "Booking Now" },
 ];
 
 export default function About() {
@@ -37,21 +38,15 @@ export default function About() {
             }
           />
           <div className="mt-6 space-y-4 text-base text-brand-white/70 sm:text-lg">
-            <p>
-              E. Ness is a Philadelphia battle rap legend who helped bring raw
-              street cadence to the mainstream. From the corners of Philly to
-              stages across the country, his energy is unmatched.
-            </p>
-            <p>
-              Now performing live for parties, clubs, and events — bringing that
-              same authentic fire everywhere he goes.
-            </p>
+            {artist.bio.map((para) => (
+              <p key={para.slice(0, 24)}>{para}</p>
+            ))}
           </div>
 
           <dl className="mt-10 grid grid-cols-3 gap-4">
             {stats.map((s) => (
-              <div key={s.label} className="rounded-xl border border-border/70 bg-ink-card/50 p-4 text-center">
-                <dt className="font-display text-2xl text-brand-blue-bright sm:text-3xl">
+              <div key={s.label} className="rounded-xl border border-border/70 bg-ink-card/50 p-3 text-center sm:p-4">
+                <dt className="font-display text-base text-brand-blue-bright sm:text-xl">
                   {s.value}
                 </dt>
                 <dd className="mt-1 text-xs text-brand-white/55">{s.label}</dd>

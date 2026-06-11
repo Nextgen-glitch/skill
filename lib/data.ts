@@ -5,13 +5,21 @@ export const artist = {
   brand: "Ness Cheesecake",
   tagline: "Made With Brotherly Love",
   city: "Philadelphia, PA",
-  bookingEmail: "booking@nesscheesecake.com",
+  bookingEmail: "booking@nesscheesecake.com", // TODO: confirm real booking inbox
   socials: {
-    instagram: "https://instagram.com/",
-    youtube: "https://youtube.com/",
-    spotify: "https://spotify.com/",
-    apple: "https://music.apple.com/",
+    instagram: "https://www.instagram.com/theofficialeness",
+    facebook: "https://www.facebook.com/share/1J8umQgFb8/",
   },
+  bio: [
+    "E. Ness is a Philadelphia institution — a battle rap legend who took the raw cadence of the city's streets and carried it all the way to the national stage. From corner ciphers to coast-to-coast attention, his name has long been synonymous with that unmistakable Philly hunger.",
+    "That same energy now fuels Ness Cheesecake: an artist and a movement, built with brotherly love. Whether it's a packed club, a private party, or a festival crowd, E. Ness brings the authentic fire and crowd-moving presence that only a true performer can deliver.",
+  ],
+};
+
+// Featured promo clip provided by the artist.
+export const featuredVideo = {
+  src: "/media/eness-clip.mp4",
+  title: "E. Ness — Live & Direct",
 };
 
 export type Song = {
