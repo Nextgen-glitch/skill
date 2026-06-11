@@ -116,6 +116,30 @@ def main() -> None:
     lines.append("> Skills are invoked via the Skill tool or `@skill-name`. The `Risk` column reflects each skill's self-declared `risk` label (`safe`, `unknown`, etc.).")
     lines.append("")
 
+    # installation history (provenance across sessions)
+    lines.append("## Installation History")
+    lines.append("")
+    lines.append("Skills in this repository were installed across multiple sessions:")
+    lines.append("")
+    lines.append("| Session | Commit | What was installed |")
+    lines.append("|---|---|---|")
+    lines.append(
+        "| 1 | `ce5f832` | **`ui-ux-pro-max`** — UI/UX Pro Max design intelligence "
+        "(50+ styles, 97 color palettes, 57 font pairings, 99 UX guidelines, 25 chart "
+        "types across 9 stacks). Installed as a single skill. |"
+    )
+    lines.append(
+        "| 2 | `e0d93e2` | **antigravity-awesome-skills** library — the full catalog "
+        "(v12.3.0). Added the remaining skills and updated `ui-ux-pro-max` to the "
+        "catalog version. |"
+    )
+    lines.append("")
+    lines.append(
+        "Every skill from both sessions is included in the alphabetical listing below "
+        f"(**{len(uniq)}** skills total)."
+    )
+    lines.append("")
+
     # table of contents
     lines.append("## Index")
     lines.append("")

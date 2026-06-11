@@ -11,6 +11,17 @@ A structured reference for every agentic skill installed in this repository unde
 
 > Skills are invoked via the Skill tool or `@skill-name`. The `Risk` column reflects each skill's self-declared `risk` label (`safe`, `unknown`, etc.).
 
+## Installation History
+
+Skills in this repository were installed across multiple sessions:
+
+| Session | Commit | What was installed |
+|---|---|---|
+| 1 | `ce5f832` | **`ui-ux-pro-max`** — UI/UX Pro Max design intelligence (50+ styles, 97 color palettes, 57 font pairings, 99 UX guidelines, 25 chart types across 9 stacks). Installed as a single skill. |
+| 2 | `e0d93e2` | **antigravity-awesome-skills** library — the full catalog (v12.3.0). Added the remaining skills and updated `ui-ux-pro-max` to the catalog version. |
+
+Every skill from both sessions is included in the alphabetical listing below (**1527** skills total).
+
 ## Index
 
 [#](#section-digit) (8) · [A](#section-a) (252) · [B](#section-b) (54) · [C](#section-c) (129) · [D](#section-d) (79) · [E](#section-e) (43) · [F](#section-f) (68) · [G](#section-g) (52) · [H](#section-h) (48) · [I](#section-i) (38) · [J](#section-j) (12) · [K](#section-k) (12) · [L](#section-l) (51) · [M](#section-m) (84) · [N](#section-n) (32) · [O](#section-o) (49) · [P](#section-p) (89) · [Q](#section-q) (3) · [R](#section-r) (48) · [S](#section-s) (177) · [T](#section-t) (71) · [U](#section-u) (34) · [V](#section-v) (31) · [W](#section-w) (39) · [X](#section-x) (7) · [Y](#section-y) (9) · [Z](#section-z) (8)
