@@ -65,10 +65,16 @@ class Agent:
         system_prompt: str,
         registry: ToolRegistry | None = None,
         history: list[dict[str, Any]] | None = None,
+        gate=None,
+        audit=None,
+        model_name: str = "",
     ):
         self.provider = provider
         self.system_prompt = system_prompt
         self.registry = registry
+        self.gate = gate  # Tier 6 confirmation gate; None = run tools ungated
+        self.audit = audit  # Tier 6 audit log + cost tally; None = no logging
+        self.model_name = model_name
         # Short-term memory: the conversation so far. Long-term memory is Tier 4.
         self.history: list[dict[str, Any]] = history or []
 
@@ -126,7 +132,22 @@ class Agent:
     def _run_tool(self, name: str, tool_input: dict[str, Any]) -> str:
         if self.registry is None:
             return f"(no tools available to run {name})"
-        return self.registry.run(name, tool_input)
+
+        # The confirmation gate sits right here — between the model choosing the tool
+        # and the tool running — so it covers typed, spoken, and heartbeat turns alike.
+        if self.gate is not None:
+            tool = self.registry.get(name)
+            declared = bool(tool.consequential) if tool else False
+            if not self.gate.authorize(name=name, declared=declared, tool_input=tool_input):
+                msg = f"(skipped {name}: this needs your explicit confirmation, which wasn't given)"
+                if self.audit:
+                    self.audit.tool(name, tool_input, status="denied", result=msg)
+                return msg
+
+        result = self.registry.run(name, tool_input)
+        if self.audit:
+            self.audit.tool(name, tool_input, status="ran", result=result)
+        return result
 
     @staticmethod
     def _assistant_message(result: TurnResult) -> dict[str, Any]:
@@ -164,4 +185,6 @@ class Agent:
                 result = event
         if result is None:  # defensive: the seam always yields a final TurnResult
             result = TurnResult(text="")
+        if self.audit:
+            self.audit.model(self.model_name, result.input_tokens, result.output_tokens)
         return result

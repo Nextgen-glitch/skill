@@ -30,12 +30,28 @@ def _show_tool(name: str, tool_input: dict[str, Any], result: str) -> None:
     sys.stdout.flush()
 
 
-def _build_agent(config) -> Agent:
-    """Construct the agent: provider, durable memory loaded into the prompt, and tools.
+def _console_confirmer(name: str, tool_input: dict) -> bool:
+    """Interactive confirmation prompt — states plainly what's about to happen."""
+    from juno.safety import describe_action
 
-    Shared by the text and voice front-ends so both flow through the same brain.
+    try:
+        answer = input(
+            f"\n  \033[33m⚠ allow: {describe_action(name, tool_input)} ? [y/N]\033[0m "
+        ).strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return False
+    return answer in {"y", "yes"}
+
+
+def _build_agent(config, confirmer=_console_confirmer) -> tuple[Agent, "object"]:
+    """Construct the agent: provider, durable memory, tools, gate, and audit.
+
+    Shared by the text and voice front-ends so both flow through the same brain — and
+    the same confirmation gate. Returns (agent, audit).
     """
+    from juno.audit import build_audit
     from juno.memory import MemoryStore
+    from juno.safety import ConfirmationGate
     from juno.tools.memory_tools import bind_memory
 
     provider = build_provider(config)
@@ -44,9 +60,23 @@ def _build_agent(config) -> Agent:
     store = MemoryStore(mem_cfg.get("store_path", "juno/state/memory.json"))
     bind_memory(store)  # so the remember/update/forget tools act on this store
     memory_block = store.prompt_block(mem_cfg.get("max_facts_in_prompt", 100))
-
     system_prompt = build_system_prompt(config, memory_block)
-    return Agent(provider, system_prompt, registry=build_registry())
+
+    audit = build_audit(config)
+    gate = ConfirmationGate(
+        confirm_required=set(config.get("safety", "confirm_required_tools", [])),
+        confirmer=confirmer,
+        audit=audit,
+    )
+    agent = Agent(
+        provider,
+        system_prompt,
+        registry=build_registry(),
+        gate=gate,
+        audit=audit,
+        model_name=config.get("model", "name", ""),
+    )
+    return agent, audit
 
 
 def _build_heartbeat(config, announcer):
@@ -54,6 +84,7 @@ def _build_heartbeat(config, announcer):
     from juno.checks import build_checks
     from juno.heartbeat import Heartbeat
     from juno.inbox import Inbox
+    from juno.safety import is_paused
 
     hb = config.section("heartbeat")
     inbox = Inbox(hb.get("inbox_path", "juno/state/inbox.json"))
@@ -63,6 +94,7 @@ def _build_heartbeat(config, announcer):
         schedule_path=hb.get("schedule_path", "juno/state/schedule.json"),
         quiet_hours=(hb.get("quiet_hours_start", 22), hb.get("quiet_hours_end", 8)),
         announcer=announcer,
+        is_paused=lambda: is_paused(config),  # the kill switch, checked every tick
     )
     return heartbeat, inbox
 
@@ -76,7 +108,7 @@ def run_text_repl() -> int:
     name = config.get("agent", "name", "Juno")
 
     try:
-        agent = _build_agent(config)
+        agent, audit = _build_agent(config)
     except MissingSecret as err:
         print(f"{name} can't start: {err}")
         return 1
@@ -86,7 +118,9 @@ def run_text_repl() -> int:
     )
 
     print(f"{name} here — warm up, type a message. (exit / quit / Ctrl-D to leave)")
-    print("  commands: 'inbox' to see held notices, 'dismiss <id>' to clear one.\n")
+    print(
+        "  commands: 'inbox', 'dismiss <id>', 'pause'/'resume' (kill switch), 'cost'.\n"
+    )
 
     # Catch up on anything that happened while I was away — held, not lost.
     held = heartbeat.catch_up()
@@ -114,12 +148,36 @@ def run_text_repl() -> int:
                 return 0
             if _handle_inbox_command(user_text, inbox):
                 continue
+            if _handle_control_command(user_text, config, audit):
+                continue
 
             print(f"{name} ▸ ", end="")
             agent.run_turn(user_text, on_text=_stream_to_stdout, on_tool=_show_tool)
             print("\n")
     finally:
         heartbeat.stop()
+
+
+def _handle_control_command(text: str, config, audit) -> bool:
+    """Handle 'pause' / 'resume' (kill switch) and 'cost'. Returns True if handled."""
+    from juno.safety import is_paused, set_paused
+
+    lowered = text.lower()
+    if lowered == "pause":
+        set_paused(config, True)
+        print("  ⏸ proactive behavior paused. You can still talk to me.\n")
+        return True
+    if lowered == "resume":
+        set_paused(config, False)
+        print("  ▶ proactive behavior resumed.\n")
+        return True
+    if lowered == "status":
+        print(f"  proactive: {'paused' if is_paused(config) else 'running'}\n")
+        return True
+    if lowered == "cost":
+        print(f"  model usage so far: {audit.tally.summary()}\n")
+        return True
+    return False
 
 
 def _handle_inbox_command(text: str, inbox) -> bool:
@@ -151,7 +209,7 @@ def run_voice_repl() -> int:
     name = config.get("agent", "name", "Juno")
 
     try:
-        agent = _build_agent(config)
+        agent, _audit = _build_agent(config)
         from juno.voice.capture import PushToTalkRecorder
         from juno.voice.session import VoiceSession
         from juno.voice.stt import build_transcriber

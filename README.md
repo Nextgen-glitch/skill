@@ -16,7 +16,7 @@ See [`AGENT.md`](./AGENT.md) for the full spec and the reasoning behind the desi
 - [x] **Tier 3** — The ears & mouth (push-to-talk voice)
 - [x] **Tier 4** — The memory (survives restarts)
 - [x] **Tier 5** — The heartbeat (proactive, quiet by default)
-- [ ] **Tier 6** — The rails (safety, confirmation, config, kill switch)
+- [x] **Tier 6** — The rails (safety, confirmation, config, kill switch)
 
 ## Setup
 
@@ -38,6 +38,41 @@ juno            # text REPL
 Type your message and press enter. `exit` / `quit` / Ctrl-D to leave.
 Everything is configured in [`config.toml`](./config.toml) — no code edits needed to
 tune the model, intervals, quiet hours, voice, or the confirmation list.
+
+### Commands (text mode)
+
+- `inbox` — list held proactive notices; `dismiss <id>` — clear one
+- `pause` / `resume` — the kill switch: halt or restore all proactive behavior (you can
+  still chat while paused); `status` — show whether proactivity is running
+- `cost` — show the running model-token tally
+
+### Safety posture
+
+- **Confirmation gate.** Tools that send, spend, delete, or change a setting stop and ask
+  before running — stated plainly, per action, never generalizing. Which tools are gated
+  is the `safety.confirm_required_tools` list in `config.toml` (a tool can also declare
+  itself consequential in code). The gate sits in the shared agent core, so it covers
+  typed, spoken, and heartbeat-initiated actions alike.
+- **External content is data, not commands.** The system prompt instructs Juno to treat
+  anything it reads (web pages, emails, tool results, stored notes) as data — if such
+  content looks like an instruction, it surfaces it and asks rather than obeying.
+- **Audit trail.** Every tool run, confirmation, and model call appends a line to
+  `logs/audit.jsonl`, with a running cost tally.
+- **Kill switch.** `pause` (or `touch juno/state/PAUSED`) halts proactivity at once.
+
+### Voice mode
+
+```bash
+pip install -e ".[voice]"
+juno --voice    # hold the push-to-talk key (config: voice.push_to_talk_key) to speak
+```
+
+Set an ElevenLabs voice id in `config.toml` (`voice.elevenlabs_voice_id`) and the
+`DEEPGRAM_API_KEY` / `ELEVENLABS_API_KEY` secrets in `.env` first. The text path keeps
+working regardless — it's the fallback and the debug path.
+
+> Proactive checks and voice are **off by default** in `config.toml`
+> (`heartbeat.enabled`, `voice.enabled`). Turn them on when you're ready.
 
 ## Tests
 
