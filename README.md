@@ -12,7 +12,7 @@ See [`AGENT.md`](./AGENT.md) for the full spec and the reasoning behind the desi
 
 - [x] **Tier 0** — Spec & scaffolding
 - [x] **Tier 1** — The brain (text conversation loop)
-- [ ] **Tier 2** — The hands (tool registry)
+- [x] **Tier 2** — The hands (tool registry)
 - [ ] **Tier 3** — The ears & mouth (push-to-talk voice)
 - [ ] **Tier 4** — The memory (survives restarts)
 - [ ] **Tier 5** — The heartbeat (proactive, quiet by default)
