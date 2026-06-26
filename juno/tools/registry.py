@@ -136,6 +136,10 @@ tool = _DEFAULT.tool
 
 def build_registry() -> ToolRegistry:
     """Import the bundled tool modules (registering them) and return the registry."""
-    from juno.tools import calendar_tools, prospecting_tools  # noqa: F401
+    from juno.tools import (  # noqa: F401
+        calendar_tools,
+        memory_tools,
+        prospecting_tools,
+    )
 
     return _DEFAULT

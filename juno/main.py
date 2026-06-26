@@ -30,17 +30,34 @@ def _show_tool(name: str, tool_input: dict[str, Any], result: str) -> None:
     sys.stdout.flush()
 
 
+def _build_agent(config) -> Agent:
+    """Construct the agent: provider, durable memory loaded into the prompt, and tools.
+
+    Shared by the text and voice front-ends so both flow through the same brain.
+    """
+    from juno.memory import MemoryStore
+    from juno.tools.memory_tools import bind_memory
+
+    provider = build_provider(config)
+
+    mem_cfg = config.section("memory")
+    store = MemoryStore(mem_cfg.get("store_path", "juno/state/memory.json"))
+    bind_memory(store)  # so the remember/update/forget tools act on this store
+    memory_block = store.prompt_block(mem_cfg.get("max_facts_in_prompt", 100))
+
+    system_prompt = build_system_prompt(config, memory_block)
+    return Agent(provider, system_prompt, registry=build_registry())
+
+
 def run_text_repl() -> int:
     config = Config.load()
     name = config.get("agent", "name", "Juno")
 
     try:
-        provider = build_provider(config)
+        agent = _build_agent(config)
     except MissingSecret as err:
         print(f"{name} can't start: {err}")
         return 1
-
-    agent = Agent(provider, build_system_prompt(config), registry=build_registry())
 
     print(f"{name} here — warm up, type a message. (exit / quit / Ctrl-D to leave)\n")
     while True:
@@ -59,11 +76,6 @@ def run_text_repl() -> int:
         print(f"{name} ▸ ", end="")
         agent.run_turn(user_text, on_text=_stream_to_stdout, on_tool=_show_tool)
         print("\n")
-
-
-def _build_agent(config) -> Agent:
-    provider = build_provider(config)
-    return Agent(provider, build_system_prompt(config), registry=build_registry())
 
 
 def run_voice_repl() -> int:
