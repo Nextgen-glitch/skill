@@ -46,6 +46,18 @@ tune the model, intervals, quiet hours, voice, or the confirmation list.
   still chat while paused); `status` — show whether proactivity is running
 - `cost` — show the running model-token tally
 
+### Browser face
+
+```bash
+python -m juno.web            # then open http://localhost:8000
+# python -m juno.web --port 8080
+```
+
+A thin web adapter over the same `Agent.run_turn`. With `ANTHROPIC_API_KEY` set it uses
+the real Claude brain; without one it runs a **demo brain** that still drives the real
+tool loop and memory, so the UI is clickable offline (try "what's on my calendar
+today?", "find bike shops in Zurich", "remember that I prefer morning meetings").
+
 ### Safety posture
 
 - **Confirmation gate.** Tools that send, spend, delete, or change a setting stop and ask

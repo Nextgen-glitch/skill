@@ -43,18 +43,19 @@ def _console_confirmer(name: str, tool_input: dict) -> bool:
     return answer in {"y", "yes"}
 
 
-def _build_agent(config, confirmer=_console_confirmer) -> tuple[Agent, "object"]:
+def _build_agent(config, confirmer=_console_confirmer, provider=None) -> tuple[Agent, "object"]:
     """Construct the agent: provider, durable memory, tools, gate, and audit.
 
-    Shared by the text and voice front-ends so both flow through the same brain — and
-    the same confirmation gate. Returns (agent, audit).
+    Shared by the text, voice, and web front-ends so all flow through the same brain —
+    and the same confirmation gate. Pass `provider` to override the model seam (e.g. the
+    web demo brain); otherwise the configured provider is built. Returns (agent, audit).
     """
     from juno.audit import build_audit
     from juno.memory import MemoryStore
     from juno.safety import ConfirmationGate
     from juno.tools.memory_tools import bind_memory
 
-    provider = build_provider(config)
+    provider = provider or build_provider(config)
 
     mem_cfg = config.section("memory")
     store = MemoryStore(mem_cfg.get("store_path", "juno/state/memory.json"))
