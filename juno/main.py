@@ -49,6 +49,28 @@ def _build_agent(config) -> Agent:
     return Agent(provider, system_prompt, registry=build_registry())
 
 
+def _build_heartbeat(config, announcer):
+    """Construct the inbox + heartbeat from config. Returns (heartbeat, inbox)."""
+    from juno.checks import build_checks
+    from juno.heartbeat import Heartbeat
+    from juno.inbox import Inbox
+
+    hb = config.section("heartbeat")
+    inbox = Inbox(hb.get("inbox_path", "juno/state/inbox.json"))
+    heartbeat = Heartbeat(
+        checks=build_checks(config),
+        inbox=inbox,
+        schedule_path=hb.get("schedule_path", "juno/state/schedule.json"),
+        quiet_hours=(hb.get("quiet_hours_start", 22), hb.get("quiet_hours_end", 8)),
+        announcer=announcer,
+    )
+    return heartbeat, inbox
+
+
+def _print_notice(name: str, notice) -> None:
+    print(f"\n  \033[36m🔔 {name} (from {notice.source}): {notice.text}\033[0m")
+
+
 def run_text_repl() -> int:
     config = Config.load()
     name = config.get("agent", "name", "Juno")
@@ -59,23 +81,68 @@ def run_text_repl() -> int:
         print(f"{name} can't start: {err}")
         return 1
 
-    print(f"{name} here — warm up, type a message. (exit / quit / Ctrl-D to leave)\n")
-    while True:
+    heartbeat, inbox = _build_heartbeat(
+        config, announcer=lambda n: _print_notice(name, n)
+    )
+
+    print(f"{name} here — warm up, type a message. (exit / quit / Ctrl-D to leave)")
+    print("  commands: 'inbox' to see held notices, 'dismiss <id>' to clear one.\n")
+
+    # Catch up on anything that happened while I was away — held, not lost.
+    held = heartbeat.catch_up()
+    if held:
+        print(f"  while you were gone ({len(held)}):")
+        for n in held:
+            print(f"    #{n.id} [{n.level}] {n.text}")
+        print()
+
+    if config.section("heartbeat").get("enabled", False):
+        heartbeat.start(config.get("heartbeat", "tick_seconds", 60))
+
+    try:
+        while True:
+            try:
+                user_text = input("you ▸ ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print(f"\n{name}: talk soon.")
+                return 0
+
+            if not user_text:
+                continue
+            if user_text.lower() in {"exit", "quit"}:
+                print(f"{name}: talk soon.")
+                return 0
+            if _handle_inbox_command(user_text, inbox):
+                continue
+
+            print(f"{name} ▸ ", end="")
+            agent.run_turn(user_text, on_text=_stream_to_stdout, on_tool=_show_tool)
+            print("\n")
+    finally:
+        heartbeat.stop()
+
+
+def _handle_inbox_command(text: str, inbox) -> bool:
+    """Handle 'inbox' / 'dismiss <id>'. Returns True if the input was a command."""
+    lowered = text.lower()
+    if lowered == "inbox":
+        pending = inbox.pending()
+        if not pending:
+            print("  inbox is empty.\n")
+        else:
+            for n in pending:
+                print(f"  #{n.id} [{n.level}] {n.text}")
+            print()
+        return True
+    if lowered.startswith("dismiss "):
         try:
-            user_text = input("you ▸ ").strip()
-        except (EOFError, KeyboardInterrupt):
-            print(f"\n{name}: talk soon.")
-            return 0
-
-        if not user_text:
-            continue
-        if user_text.lower() in {"exit", "quit"}:
-            print(f"{name}: talk soon.")
-            return 0
-
-        print(f"{name} ▸ ", end="")
-        agent.run_turn(user_text, on_text=_stream_to_stdout, on_tool=_show_tool)
-        print("\n")
+            notice_id = int(text.split(None, 1)[1])
+        except (ValueError, IndexError):
+            print("  usage: dismiss <id>\n")
+            return True
+        print(("  dismissed.\n" if inbox.dismiss(notice_id) else "  no such notice.\n"))
+        return True
+    return False
 
 
 def run_voice_repl() -> int:

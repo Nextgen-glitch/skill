@@ -44,6 +44,15 @@ quiet_hours_end = 8
 # A background action waiting on my approval gives up after this and leaves a note.
 approval_timeout_seconds = 300
 
+# What to check and how often. Editing these is a one-line change, not a code edit.
+[[heartbeat.checks]]
+name = "trigger_watch"
+enabled = true
+interval_seconds = 5
+trigger_file = "juno/state/TRIGGER"
+# calm = log only; interrupt = surface when awake; critical = surface even at night.
+level = "interrupt"
+
 [safety]
 # Tier 6. The hard confirmation gate.
 # Tools whose names are listed here always require my explicit yes before running.

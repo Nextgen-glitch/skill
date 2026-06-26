@@ -15,7 +15,7 @@ See [`AGENT.md`](./AGENT.md) for the full spec and the reasoning behind the desi
 - [x] **Tier 2** — The hands (tool registry)
 - [x] **Tier 3** — The ears & mouth (push-to-talk voice)
 - [x] **Tier 4** — The memory (survives restarts)
-- [ ] **Tier 5** — The heartbeat (proactive, quiet by default)
+- [x] **Tier 5** — The heartbeat (proactive, quiet by default)
 - [ ] **Tier 6** — The rails (safety, confirmation, config, kill switch)
 
 ## Setup
