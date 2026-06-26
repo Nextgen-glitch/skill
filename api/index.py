@@ -34,7 +34,7 @@ import juno.tools.prospecting_tools  # noqa: E402,F401
 import juno.tools.registry  # noqa: E402,F401
 from juno.config import Config  # noqa: E402
 from juno.main import _build_agent  # noqa: E402
-from juno.web import PAGE, DemoProvider  # noqa: E402
+from juno.web import PAGE, DemoProvider, handle_chat, synthesize  # noqa: E402
 
 # Config built inline (no config.toml read at runtime), with state under /tmp.
 CONFIG_DATA = {
@@ -55,6 +55,10 @@ CONFIG_DATA = {
         "request_timeout_seconds": 60,
     },
     "memory": {"store_path": "/tmp/juno-memory.json", "max_facts_in_prompt": 100},
+    "voice": {
+        "elevenlabs_voice_id": "UgBBYS2sOqTuMpoF3BR0",
+        "elevenlabs_model": "eleven_turbo_v2_5",
+    },
     "safety": {
         "confirm_required_tools": [
             "send_email",
@@ -77,6 +81,11 @@ _provider = None if _live else DemoProvider()
 # tools are read-only, so this never blocks the demo.
 _agent, _audit = _build_agent(_config, confirmer=lambda n, i: False, provider=_provider)
 _lock = threading.Lock()
+
+_VOICE = _config.section("voice")
+_ELEVEN_KEY = os.environ.get("ELEVENLABS_API_KEY")
+_VOICE_ID = _VOICE.get("elevenlabs_voice_id", "")
+_ELEVEN_MODEL = _VOICE.get("elevenlabs_model", "eleven_turbo_v2_5")
 
 NAME = "Juno"
 MODE = "live brain (Claude)" if _live else "demo brain — set ANTHROPIC_API_KEY in Vercel for the real model"
@@ -109,16 +118,22 @@ class handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         try:
             payload = json.loads(self.rfile.read(length) or b"{}")
-            message = str(payload.get("message", "")).strip()
         except (ValueError, json.JSONDecodeError):
             self._send(400, b'{"error":"bad request"}', "application/json")
             return
 
-        tools: list = []
-        with _lock:
-            reply = _agent.run_turn(
-                message,
-                on_tool=lambda n, i, r: tools.append({"name": n, "input": i, "result": r}),
+        # One endpoint, action-routed: "speak" returns audio (or 503), else chat JSON.
+        if payload.get("action") == "speak":
+            audio = synthesize(
+                str(payload.get("text", "")), _ELEVEN_KEY, _VOICE_ID, _ELEVEN_MODEL
             )
-        body = json.dumps({"reply": reply, "tools": tools}).encode("utf-8")
-        self._send(200, body, "application/json")
+            if audio:
+                self._send(200, audio, "audio/mpeg")
+            else:
+                self._send(503, b'{"fallback":true}', "application/json")
+            return
+
+        message = str(payload.get("message", "")).strip()
+        with _lock:
+            result = handle_chat(_agent, message)
+        self._send(200, json.dumps(result).encode("utf-8"), "application/json")

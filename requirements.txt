@@ -1,3 +1,4 @@
 # Vercel installs these for the serverless function (api/index.py).
-# Only needed for live mode; the demo brain runs on the standard library alone.
-anthropic>=0.40
+# Demo brain runs on the standard library alone; these power the optional upgrades:
+anthropic>=0.40        # live brain, when ANTHROPIC_API_KEY is set
+elevenlabs>=1.0        # spoken replies via /api/chat {action:"speak"}, when ELEVENLABS_API_KEY is set

@@ -102,6 +102,21 @@ class ElevenLabsSpeaker:
         self._stop.set()
 
 
+def synthesize_bytes(text: str, api_key: str, voice_id: str, model: str = "eleven_turbo_v2_5") -> bytes:
+    """Synthesize speech and return the full audio as MP3 bytes (for the web face).
+
+    Unlike ElevenLabsSpeaker (which plays locally), this returns the bytes so a web
+    endpoint can stream them to the browser. Lazy-imports the SDK so the text path and
+    the demo brain don't need it installed.
+    """
+    from elevenlabs.client import ElevenLabs
+
+    client = ElevenLabs(api_key=api_key)
+    audio = client.text_to_speech.convert(voice_id=voice_id, model_id=model, text=text)
+    # The SDK yields byte chunks; join them into one MP3 payload.
+    return b"".join(audio)
+
+
 def build_speaker(config) -> Speaker:
     """Construct the speaker from config. The one place that knows the vendor + voice."""
     from juno.config import Config

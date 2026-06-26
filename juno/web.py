@@ -93,73 +93,253 @@ class DemoProvider:
         yield TurnResult(text=text)
 
 
+# --- shared request helpers (used by the local server AND the Vercel function) ----
+
+def handle_chat(agent, message: str) -> dict[str, Any]:
+    """Run one turn through the shared agent core, collecting any tool calls."""
+    tools: list[dict[str, Any]] = []
+    reply = agent.run_turn(
+        message, on_tool=lambda n, i, r: tools.append({"name": n, "input": i, "result": r})
+    )
+    return {"reply": reply, "tools": tools}
+
+
+def synthesize(text: str, api_key: str | None, voice_id: str | None, model: str) -> bytes | None:
+    """ElevenLabs speech as MP3 bytes, or None to signal the page to use browser speech."""
+    if not api_key or not voice_id or not text.strip():
+        return None
+    try:
+        from juno.voice.tts import synthesize_bytes
+
+        return synthesize_bytes(text, api_key=api_key, voice_id=voice_id, model=model)
+    except Exception:  # noqa: BLE001 - any failure -> fall back to browser speech
+        return None
+
+
 # --- the page --------------------------------------------------------------------
 
-PAGE = """<!doctype html>
+PAGE = r"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>__NAME__</title>
 <style>
-  :root { --bg:#faf7f2; --card:#fff; --ink:#2b2622; --muted:#8a817a; --accent:#c2703d; --line:#ece5dc; }
+  :root { --cyan:#2fd4ff; --ink:#cfe9f5; --muted:#5d7488; }
   * { box-sizing:border-box; }
-  body { margin:0; font:16px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-         background:var(--bg); color:var(--ink); height:100vh; display:flex; flex-direction:column; }
-  header { padding:18px 22px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; }
-  .dot { width:11px; height:11px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 4px rgba(194,112,61,.15); }
-  header h1 { font-size:17px; margin:0; font-weight:650; }
-  header .sub { color:var(--muted); font-size:13px; margin-left:auto; }
-  #log { flex:1; overflow-y:auto; padding:24px; display:flex; flex-direction:column; gap:14px; max-width:760px; width:100%; margin:0 auto; }
-  .msg { max-width:78%; padding:11px 15px; border-radius:16px; white-space:pre-wrap; word-wrap:break-word; }
-  .you { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:5px; }
-  .juno { align-self:flex-start; background:var(--card); border:1px solid var(--line); border-bottom-left-radius:5px; }
-  .tool { align-self:flex-start; font-size:12.5px; color:var(--muted); background:transparent;
-          border:1px dashed var(--line); border-radius:10px; padding:6px 10px; font-family:ui-monospace,Menlo,monospace; }
-  form { display:flex; gap:10px; padding:16px 22px; border-top:1px solid var(--line); max-width:760px; width:100%; margin:0 auto; }
-  input { flex:1; padding:12px 15px; border:1px solid var(--line); border-radius:12px; font-size:15px; outline:none; background:#fff; }
-  input:focus { border-color:var(--accent); }
-  button { padding:12px 18px; border:0; border-radius:12px; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; }
-  button:disabled { opacity:.5; cursor:default; }
+  html,body { margin:0; height:100%; }
+  body { font:16px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink);
+         background:radial-gradient(120% 120% at 50% 35%, #0a1626 0%, #060b14 55%, #03060b 100%);
+         overflow:hidden; }
+  #top { position:fixed; top:16px; left:20px; right:20px; display:flex; align-items:center; gap:10px; z-index:5; }
+  #top .nm { font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:14px; }
+  #top .md { margin-left:auto; font-size:12px; color:var(--muted); }
+  #stage { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; }
+  canvas { display:block; }
+  #state { letter-spacing:.32em; text-transform:uppercase; font-size:12px; color:var(--cyan);
+           opacity:.85; height:16px; }
+  #caps { width:min(680px,88vw); text-align:center; margin-top:10px; min-height:84px; }
+  #you { color:var(--muted); font-size:15px; min-height:22px; }
+  #juno { color:#eaf6ff; font-size:19px; font-weight:500; margin-top:6px; min-height:26px;
+          text-shadow:0 0 18px rgba(47,212,255,.25); }
+  #chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-top:10px; min-height:22px; }
+  .chip { font:12px ui-monospace,Menlo,monospace; color:#8fd0e8; border:1px solid rgba(47,212,255,.25);
+          border-radius:9px; padding:3px 8px; background:rgba(47,212,255,.05); }
+  #bar { position:fixed; bottom:22px; left:0; right:0; display:flex; gap:10px; justify-content:center; align-items:center; z-index:5; }
+  .pill { border:1px solid rgba(47,212,255,.3); background:rgba(47,212,255,.06); color:var(--ink);
+          border-radius:999px; padding:10px 16px; cursor:pointer; font-size:14px; }
+  .pill:hover { background:rgba(47,212,255,.14); }
+  #textwrap { display:none; gap:8px; }
+  #textwrap.show { display:flex; }
+  #text { width:min(420px,70vw); padding:10px 14px; border-radius:999px; border:1px solid rgba(47,212,255,.3);
+          background:#091420; color:var(--ink); outline:none; font-size:15px; }
+  #overlay { position:fixed; inset:0; z-index:20; display:flex; flex-direction:column; align-items:center;
+             justify-content:center; gap:18px; background:rgba(3,6,11,.78); backdrop-filter:blur(3px); }
+  #overlay h2 { margin:0; font-weight:600; letter-spacing:.05em; }
+  #overlay p { margin:0; color:var(--muted); max-width:420px; text-align:center; }
+  #go { padding:14px 30px; font-size:16px; border-radius:999px; border:1px solid var(--cyan);
+        background:rgba(47,212,255,.12); color:#eaf6ff; cursor:pointer; }
+  #go:hover { background:rgba(47,212,255,.22); }
 </style>
 </head>
 <body>
-  <header>
-    <span class="dot"></span>
-    <h1>__NAME__</h1>
-    <span class="sub">__MODE__</span>
-  </header>
-  <div id="log">
-    <div class="msg juno">__GREETING__</div>
+  <div id="top"><span class="nm">__NAME__</span><span class="md">__MODE__</span></div>
+  <div id="stage">
+    <canvas id="orb" width="320" height="320"></canvas>
+    <div id="state">idle</div>
+    <div id="caps">
+      <div id="you"></div>
+      <div id="juno">__GREETING__</div>
+      <div id="chips"></div>
+    </div>
   </div>
-  <form id="f">
-    <input id="m" autocomplete="off" placeholder="Message __NAME__…" autofocus/>
-    <button id="b" type="submit">Send</button>
-  </form>
+  <div id="bar">
+    <button id="mic" class="pill">🎙 listening</button>
+    <button id="kbd" class="pill">⌨</button>
+    <div id="textwrap"><input id="text" placeholder="type instead…" autocomplete="off"/></div>
+  </div>
+  <div id="overlay">
+    <h2>__NAME__</h2>
+    <p>Tap to start, then just talk. __NAME__ listens, thinks, and speaks back. Tap the orb to interrupt.</p>
+    <button id="go">Tap to start</button>
+  </div>
 <script>
-  const log = document.getElementById('log'), form = document.getElementById('f'),
-        input = document.getElementById('m'), btn = document.getElementById('b');
-  function add(cls, text) {
-    const d = document.createElement('div');
-    d.className = 'msg ' + cls; d.textContent = text;
-    log.appendChild(d); log.scrollTop = log.scrollHeight; return d;
+(function(){
+  const NAME = "__NAME__";
+  const el = (id)=>document.getElementById(id);
+  const youEl = el('you'), junoEl = el('juno'), chipsEl = el('chips'), stateEl = el('state');
+
+  // ---- orb animation ----
+  const cv = el('orb'), ctx = cv.getContext('2d');
+  const DPR = Math.min(window.devicePixelRatio||1, 2);
+  function size(){ const s=Math.min(340, Math.min(window.innerWidth,window.innerHeight)*0.6);
+    cv.width=s*DPR; cv.height=s*DPR; cv.style.width=s+'px'; cv.style.height=s+'px'; }
+  size(); window.addEventListener('resize', size);
+  const STATE = { value:'idle' };
+  const cfg = {
+    idle:      {speed:0.4, glow:0.45, jitter:0.02},
+    listening: {speed:0.8, glow:0.8,  jitter:0.10},
+    thinking:  {speed:2.2, glow:0.7,  jitter:0.05},
+    speaking:  {speed:1.4, glow:1.0,  jitter:0.22},
+  };
+  let t=0;
+  function draw(){
+    t += 0.016;
+    const c = cfg[STATE.value] || cfg.idle;
+    const w=cv.width, h=cv.height, cx=w/2, cy=h/2;
+    const R = Math.min(w,h)*0.30;
+    ctx.clearRect(0,0,w,h);
+    // outer glow
+    const pulse = 1 + Math.sin(t*c.speed)*0.05 + (STATE.value==='speaking'?Math.sin(t*9)*c.jitter*0.4:0);
+    const g = ctx.createRadialGradient(cx,cy,R*0.2, cx,cy,R*1.9);
+    g.addColorStop(0, 'rgba(47,212,255,'+(0.28*c.glow)+')');
+    g.addColorStop(1, 'rgba(47,212,255,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+    // particle rings
+    ctx.save(); ctx.translate(cx,cy);
+    for(let ring=0; ring<4; ring++){
+      const rr = R*(0.6+ring*0.22)*pulse;
+      const n = 26+ring*10;
+      const dir = ring%2? -1:1;
+      const rot = t*c.speed*0.5*dir + ring;
+      for(let i=0;i<n;i++){
+        const a = (i/n)*Math.PI*2 + rot;
+        const jig = 1 + Math.sin(t*3 + i*1.7 + ring)*c.jitter;
+        const x = Math.cos(a)*rr*jig, y = Math.sin(a)*rr*jig;
+        const dotR = (ring===0?2.2:1.6)*DPR;
+        ctx.beginPath(); ctx.arc(x,y,dotR,0,Math.PI*2);
+        ctx.fillStyle='rgba('+(140+ring*20)+',225,255,'+(0.5*c.glow)+')';
+        ctx.shadowBlur=10*DPR; ctx.shadowColor='rgba(47,212,255,'+c.glow+')';
+        ctx.fill();
+      }
+    }
+    // core
+    ctx.shadowBlur=30*DPR; ctx.shadowColor='rgba(47,212,255,'+c.glow+')';
+    ctx.beginPath(); ctx.arc(0,0,R*0.5*pulse,0,Math.PI*2);
+    const cg = ctx.createRadialGradient(0,0,0, 0,0,R*0.5*pulse);
+    cg.addColorStop(0,'rgba(190,240,255,'+(0.9*c.glow)+')');
+    cg.addColorStop(1,'rgba(47,160,220,'+(0.15*c.glow)+')');
+    ctx.fillStyle=cg; ctx.fill();
+    ctx.restore();
+    requestAnimationFrame(draw);
   }
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const text = input.value.trim(); if (!text) return;
-    add('you', text); input.value = ''; btn.disabled = true;
-    const thinking = add('juno', '…');
-    try {
-      const r = await fetch('/api/chat', {method:'POST', headers:{'Content-Type':'application/json'},
-                                          body: JSON.stringify({message: text})});
-      const data = await r.json();
-      thinking.remove();
-      (data.tools || []).forEach(t => add('tool', '· ' + t.name + '(' + JSON.stringify(t.input) + ')'));
-      add('juno', data.reply || '(no reply)');
-    } catch (err) {
-      thinking.textContent = '(could not reach the server)';
-    } finally { btn.disabled = false; input.focus(); }
+  draw();
+  function setState(s){ STATE.value=s; stateEl.textContent=s; }
+
+  // ---- captions ----
+  function showYou(text){ youEl.textContent = text ? 'you: '+text : ''; }
+  function showJuno(text){ junoEl.textContent = text; }
+  function showChips(tools){ chipsEl.innerHTML='';
+    (tools||[]).forEach(tl=>{ const d=document.createElement('span'); d.className='chip';
+      d.textContent='· '+tl.name; chipsEl.appendChild(d); }); }
+
+  // ---- audio out (ElevenLabs endpoint, fallback to browser speech) ----
+  let curAudio=null;
+  function stopSpeaking(){ try{ if(curAudio){curAudio.pause(); curAudio=null;} }catch(e){}
+    try{ window.speechSynthesis && speechSynthesis.cancel(); }catch(e){} }
+  function browserSpeak(text){ return new Promise(res=>{
+    if(!('speechSynthesis' in window)) return res();
+    const u=new SpeechSynthesisUtterance(text); u.rate=1.02; u.onend=res; u.onerror=res;
+    speechSynthesis.speak(u); }); }
+  async function speak(text){
+    if(!text) return;
+    try{
+      const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'speak',text})});
+      if(r.ok && (r.headers.get('Content-Type')||'').indexOf('audio')>=0){
+        const blob=await r.blob(); const url=URL.createObjectURL(blob);
+        await new Promise(res=>{ curAudio=new Audio(url); curAudio.onended=res; curAudio.onerror=res;
+          curAudio.play().catch(res); });
+        curAudio=null; URL.revokeObjectURL(url); return;
+      }
+    }catch(e){}
+    await browserSpeak(text); // 503 / no key / error -> browser voice
+  }
+
+  // ---- speech recognition (hands-free) ----
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const app = { active:false, busy:false, muted:false, rec:null, recognizing:false };
+  function buildRec(){
+    if(!SR) return null;
+    const rec=new SR(); rec.continuous=true; rec.interimResults=true; rec.lang='en-US';
+    rec.onstart=()=>{ app.recognizing=true; };
+    rec.onend=()=>{ app.recognizing=false;
+      if(app.active && !app.busy && !app.muted){ try{ rec.start(); }catch(e){} } };
+    rec.onresult=(e)=>{
+      if(app.busy || app.muted) return;
+      let interim='', final='';
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const r=e.results[i]; if(r.isFinal) final+=r[0].transcript; else interim+=r[0].transcript;
+      }
+      if(interim) showYou(interim.trim());
+      const text=final.trim();
+      if(text){ takeTurn(text); }
+    };
+    return rec;
+  }
+  function startListening(){ if(!app.rec) return; if(app.recognizing) return;
+    try{ app.rec.start(); }catch(e){} }
+
+  // ---- a turn: stop mic, think, speak, resume ----
+  async function takeTurn(text){
+    if(app.busy) return;
+    app.busy=true; stopSpeaking(); setState('thinking');
+    try{ app.rec && app.rec.stop(); }catch(e){}
+    showYou(text); showJuno('…'); showChips([]);
+    try{
+      const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'chat',message:text})});
+      const data=await r.json();
+      showChips(data.tools); showJuno(data.reply||'(no reply)');
+      setState('speaking'); await speak(data.reply||'');
+    }catch(e){ showJuno('(could not reach '+NAME+')'); }
+    app.busy=false;
+    if(app.active && !app.muted){ setState('listening'); startListening(); } else { setState('idle'); }
+  }
+
+  // ---- controls ----
+  el('orb').addEventListener('click', ()=>{ // tap orb to interrupt speech
+    if(app.busy){ stopSpeaking(); } });
+  el('mic').addEventListener('click', ()=>{
+    app.muted=!app.muted; el('mic').textContent = app.muted ? '🔇 muted' : '🎙 listening';
+    if(app.muted){ try{ app.rec && app.rec.stop(); }catch(e){} setState('idle'); }
+    else if(app.active && !app.busy){ setState('listening'); startListening(); } });
+  el('kbd').addEventListener('click', ()=> el('textwrap').classList.toggle('show'));
+  el('text').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ const v=e.target.value.trim();
+    if(v){ e.target.value=''; takeTurn(v); } } });
+
+  // ---- start gesture (unlocks mic + audio) ----
+  el('go').addEventListener('click', ()=>{
+    el('overlay').style.display='none';
+    app.active=true;
+    if(SR){ app.rec=buildRec(); setState('listening'); startListening(); }
+    else { setState('idle'); app.muted=true; el('mic').textContent='🔇 no mic';
+      showJuno('Voice needs Chrome. Use the ⌨ text box to chat with '+NAME+'.');
+      el('textwrap').classList.add('show'); }
+    // unlock browser TTS on the gesture
+    try{ const u=new SpeechSynthesisUtterance(''); speechSynthesis.speak(u); }catch(e){}
   });
+})();
 </script>
 </body>
 </html>"""
@@ -171,6 +351,9 @@ class _Handler(BaseHTTPRequestHandler):
     name = "Juno"
     mode = "demo brain"
     greeting = "Hi, I'm Juno."
+    eleven_key = None
+    voice_id = ""
+    eleven_model = "eleven_turbo_v2_5"
 
     def log_message(self, *args):  # quiet the default per-request stderr noise
         pass
@@ -195,26 +378,31 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(404, b"not found", "text/plain")
 
     def do_POST(self):
-        if self.path != "/api/chat":
+        if self.path not in ("/api/chat", "/index"):
             self._send(404, b"not found", "text/plain")
             return
         length = int(self.headers.get("Content-Length", 0))
         try:
             payload = json.loads(self.rfile.read(length) or b"{}")
-            message = str(payload.get("message", "")).strip()
         except (ValueError, json.JSONDecodeError):
             self._send(400, b'{"error":"bad request"}', "application/json")
             return
 
-        tools: list[dict[str, Any]] = []
-        # One shared brain + history; serialize turns so they don't interleave.
-        with self.lock:
-            reply = self.agent.run_turn(
-                message,
-                on_tool=lambda n, i, r: tools.append({"name": n, "input": i, "result": r}),
+        # One endpoint, action-routed: "speak" returns audio (or 503), else chat JSON.
+        if payload.get("action") == "speak":
+            audio = synthesize(
+                str(payload.get("text", "")), self.eleven_key, self.voice_id, self.eleven_model
             )
-        body = json.dumps({"reply": reply, "tools": tools}).encode("utf-8")
-        self._send(200, body, "application/json")
+            if audio:
+                self._send(200, audio, "audio/mpeg")
+            else:
+                self._send(503, b'{"fallback":true}', "application/json")
+            return
+
+        message = str(payload.get("message", "")).strip()
+        with self.lock:  # one shared brain + history; serialize turns
+            result = handle_chat(self.agent, message)
+        self._send(200, json.dumps(result).encode("utf-8"), "application/json")
 
 
 def main() -> None:
@@ -237,13 +425,14 @@ def main() -> None:
     # the bundled stub tools are all read-only, so this doesn't block the demo.
     agent, _audit = _build_agent(config, confirmer=lambda n, i: False, provider=provider)
 
+    voice = config.section("voice")
     _Handler.agent = agent
     _Handler.name = name
     _Handler.mode = "live brain (Claude)" if live else "demo brain — set ANTHROPIC_API_KEY for the real model"
-    _Handler.greeting = (
-        f"Hi, I'm {name}. Ask me what's on your calendar, to find businesses in a niche, "
-        "or to remember something about you."
-    )
+    _Handler.greeting = f"Tap to start, then talk to {name}."
+    _Handler.eleven_key = os.environ.get("ELEVENLABS_API_KEY")
+    _Handler.voice_id = voice.get("elevenlabs_voice_id", "")
+    _Handler.eleven_model = voice.get("elevenlabs_model", "eleven_turbo_v2_5")
 
     server = ThreadingHTTPServer((args.host, args.port), _Handler)
     shown_host = "localhost" if args.host in ("0.0.0.0", "127.0.0.1") else args.host

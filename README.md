@@ -58,6 +58,14 @@ the real Claude brain; without one it runs a **demo brain** that still drives th
 tool loop and memory, so the UI is clickable offline (try "what's on my calendar
 today?", "find bike shops in Zurich", "remember that I prefer morning meetings").
 
+**Voice-first orb.** The page is a JARVIS-style animated orb you talk to hands-free
+(Chrome's Web Speech API): tap to start, then speak — it listens, thinks, and speaks
+back, the orb reacting to each state. It stops listening while speaking so it never
+hears itself; tap the orb to interrupt. Spoken replies use your ElevenLabs voice when
+`ELEVENLABS_API_KEY` + a voice id are set, and fall back to the browser's built-in voice
+otherwise. A `⌨` toggle reveals a text box (kept as the fallback path). Voice in/out and
+chat all flow through one `/api/chat` endpoint, action-routed, so it works on Vercel too.
+
 ### Safety posture
 
 - **Confirmation gate.** Tools that send, spend, delete, or change a setting stop and ask
