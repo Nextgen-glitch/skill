@@ -21,21 +21,30 @@ class DeepgramTranscriber:
     """Deepgram implementation of the STT seam."""
 
     def __init__(self, api_key: str, model: str = "nova-2"):
-        from deepgram import DeepgramClient  # lazy: text path installs without it
-
-        self._client = DeepgramClient(api_key)
+        self._api_key = api_key
         self._model = model
 
     def transcribe(self, audio: bytes) -> str:
-        from deepgram import PrerecordedOptions
+        return transcribe_bytes(audio, self._api_key, self._model, mimetype="audio/wav")
 
-        options = PrerecordedOptions(model=self._model, smart_format=True, punctuate=True)
-        source = {"buffer": audio, "mimetype": "audio/wav"}
-        response = self._client.listen.prerecorded.v("1").transcribe_file(source, options)
-        # Pull the top transcript out of Deepgram's response shape.
-        return (
-            response.results.channels[0].alternatives[0].transcript  # type: ignore[attr-defined]
-        ).strip()
+
+def transcribe_bytes(
+    audio: bytes, api_key: str, model: str = "nova-2", mimetype: str = "audio/webm"
+) -> str:
+    """Transcribe audio bytes with Deepgram. Used by the terminal and the web face.
+
+    `mimetype` lets the browser send its native recording format (e.g. audio/webm;
+    codecs=opus) without re-encoding. Lazy-imports the SDK so the text path installs light.
+    """
+    from deepgram import DeepgramClient, PrerecordedOptions
+
+    client = DeepgramClient(api_key)
+    options = PrerecordedOptions(model=model, smart_format=True, punctuate=True)
+    source = {"buffer": audio, "mimetype": mimetype}
+    response = client.listen.prerecorded.v("1").transcribe_file(source, options)
+    return (
+        response.results.channels[0].alternatives[0].transcript  # type: ignore[attr-defined]
+    ).strip()
 
 
 def build_transcriber(config) -> Transcriber:

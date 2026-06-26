@@ -66,6 +66,14 @@ hears itself; tap the orb to interrupt. Spoken replies use your ElevenLabs voice
 otherwise. A `⌨` toggle reveals a text box (kept as the fallback path). Voice in/out and
 chat all flow through one `/api/chat` endpoint, action-routed, so it works on Vercel too.
 
+**Speech-to-text** uses Deepgram when `DEEPGRAM_API_KEY` is set (the page records with
+MediaRecorder, detects end-of-utterance, and posts the audio to `/api/chat
+{action:"transcribe"}`); if no key is present it falls back to the browser's built-in
+speech recognition. Both ElevenLabs and Deepgram are optional upgrades — the page works
+without either, and on the hosted Vercel deployment you set those keys as project
+environment variables (a voice id is `voice.elevenlabs_voice_id` in `config.toml`, mirrored
+in `api/index.py`).
+
 ### Safety posture
 
 - **Confirmation gate.** Tools that send, spend, delete, or change a setting stop and ask

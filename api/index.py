@@ -34,7 +34,14 @@ import juno.tools.prospecting_tools  # noqa: E402,F401
 import juno.tools.registry  # noqa: E402,F401
 from juno.config import Config  # noqa: E402
 from juno.main import _build_agent  # noqa: E402
-from juno.web import PAGE, DemoProvider, handle_chat, synthesize  # noqa: E402
+from juno.web import (  # noqa: E402
+    PAGE,
+    DemoProvider,
+    _decode_audio,
+    handle_chat,
+    synthesize,
+    transcribe,
+)
 
 # Config built inline (no config.toml read at runtime), with state under /tmp.
 CONFIG_DATA = {
@@ -58,6 +65,7 @@ CONFIG_DATA = {
     "voice": {
         "elevenlabs_voice_id": "UgBBYS2sOqTuMpoF3BR0",
         "elevenlabs_model": "eleven_turbo_v2_5",
+        "deepgram_model": "nova-2",
     },
     "safety": {
         "confirm_required_tools": [
@@ -86,6 +94,8 @@ _VOICE = _config.section("voice")
 _ELEVEN_KEY = os.environ.get("ELEVENLABS_API_KEY")
 _VOICE_ID = _VOICE.get("elevenlabs_voice_id", "")
 _ELEVEN_MODEL = _VOICE.get("elevenlabs_model", "eleven_turbo_v2_5")
+_DEEPGRAM_KEY = os.environ.get("DEEPGRAM_API_KEY")
+_DEEPGRAM_MODEL = _VOICE.get("deepgram_model", "nova-2")
 
 NAME = "Juno"
 MODE = "live brain (Claude)" if _live else "demo brain — set ANTHROPIC_API_KEY in Vercel for the real model"
@@ -123,7 +133,8 @@ class handler(BaseHTTPRequestHandler):
             return
 
         # One endpoint, action-routed: "speak" returns audio (or 503), else chat JSON.
-        if payload.get("action") == "speak":
+        action = payload.get("action")
+        if action == "speak":
             audio = synthesize(
                 str(payload.get("text", "")), _ELEVEN_KEY, _VOICE_ID, _ELEVEN_MODEL
             )
@@ -131,6 +142,19 @@ class handler(BaseHTTPRequestHandler):
                 self._send(200, audio, "audio/mpeg")
             else:
                 self._send(503, b'{"fallback":true}', "application/json")
+            return
+
+        if action == "transcribe":
+            text = transcribe(
+                _decode_audio(payload.get("audio", "")),
+                _DEEPGRAM_KEY,
+                _DEEPGRAM_MODEL,
+                str(payload.get("mimetype", "audio/webm")),
+            )
+            if text is None:
+                self._send(503, b'{"fallback":true}', "application/json")
+            else:
+                self._send(200, json.dumps({"text": text}).encode("utf-8"), "application/json")
             return
 
         message = str(payload.get("message", "")).strip()

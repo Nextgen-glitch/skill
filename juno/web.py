@@ -116,6 +116,33 @@ def synthesize(text: str, api_key: str | None, voice_id: str | None, model: str)
         return None
 
 
+def _decode_audio(b64: str) -> bytes:
+    """Decode the page's base64 audio payload; empty/invalid -> empty bytes (a probe)."""
+    import base64
+
+    try:
+        return base64.b64decode(b64) if b64 else b""
+    except (ValueError, TypeError):
+        return b""
+
+
+def transcribe(audio: bytes, api_key: str | None, model: str, mimetype: str) -> str | None:
+    """Deepgram transcript for recorded audio, or None if Deepgram isn't available.
+
+    Empty audio with a key present returns "" (used by the page to probe availability).
+    """
+    if not api_key:
+        return None
+    if not audio:
+        return ""
+    try:
+        from juno.voice.stt import transcribe_bytes
+
+        return transcribe_bytes(audio, api_key=api_key, model=model, mimetype=mimetype)
+    except Exception:  # noqa: BLE001 - any failure -> page falls back to browser speech
+        return None
+
+
 # --- the page --------------------------------------------------------------------
 
 PAGE = r"""<!doctype html>
@@ -276,36 +303,15 @@ PAGE = r"""<!doctype html>
     await browserSpeak(text); // 503 / no key / error -> browser voice
   }
 
-  // ---- speech recognition (hands-free) ----
+  // ---- shared state ----
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const app = { active:false, busy:false, muted:false, rec:null, recognizing:false };
-  function buildRec(){
-    if(!SR) return null;
-    const rec=new SR(); rec.continuous=true; rec.interimResults=true; rec.lang='en-US';
-    rec.onstart=()=>{ app.recognizing=true; };
-    rec.onend=()=>{ app.recognizing=false;
-      if(app.active && !app.busy && !app.muted){ try{ rec.start(); }catch(e){} } };
-    rec.onresult=(e)=>{
-      if(app.busy || app.muted) return;
-      let interim='', final='';
-      for(let i=e.resultIndex;i<e.results.length;i++){
-        const r=e.results[i]; if(r.isFinal) final+=r[0].transcript; else interim+=r[0].transcript;
-      }
-      if(interim) showYou(interim.trim());
-      const text=final.trim();
-      if(text){ takeTurn(text); }
-    };
-    return rec;
-  }
-  function startListening(){ if(!app.rec) return; if(app.recognizing) return;
-    try{ app.rec.start(); }catch(e){} }
+  const app = { active:false, busy:false, muted:false, mode:'none', rec:null, recognizing:false,
+                stream:null, recorder:null, chunks:[], recording:false, hadSpeech:false, silenceAt:0 };
 
-  // ---- a turn: stop mic, think, speak, resume ----
-  async function takeTurn(text){
-    if(app.busy) return;
-    app.busy=true; stopSpeaking(); setState('thinking');
-    try{ app.rec && app.rec.stop(); }catch(e){}
-    showYou(text); showJuno('…'); showChips([]);
+  // A turn: think, speak, then resume listening. Assumes app.busy is already set true
+  // and input has been paused (so Juno never transcribes its own voice).
+  async function respond(text){
+    stopSpeaking(); setState('thinking'); showYou(text); showJuno('…'); showChips([]);
     try{
       const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({action:'chat',message:text})});
@@ -314,30 +320,96 @@ PAGE = r"""<!doctype html>
       setState('speaking'); await speak(data.reply||'');
     }catch(e){ showJuno('(could not reach '+NAME+')'); }
     app.busy=false;
-    if(app.active && !app.muted){ setState('listening'); startListening(); } else { setState('idle'); }
+    if(!app.active || app.muted){ setState('idle'); return; }
+    setState('listening');
+    if(app.mode==='webspeech') startListening();   // deepgram VAD resumes on its own
+  }
+  function beginTurn(text){ if(app.busy || !text) return; app.busy=true;
+    if(app.mode==='webspeech'){ try{ app.rec && app.rec.stop(); }catch(e){} } respond(text); }
+
+  // ---- input mode A: Deepgram (MediaRecorder + voice-activity detection) ----
+  const SILENCE_MS=900, SPEECH_RMS=0.018, MIN_BYTES=1600;
+  function pickMime(){ for(const m of ['audio/webm;codecs=opus','audio/webm','audio/ogg']){
+    if(window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m; } return ''; }
+  function blobToB64(blob){ return new Promise(res=>{ const r=new FileReader();
+    r.onloadend=()=>res(String(r.result).split(',')[1]||''); r.readAsDataURL(blob); }); }
+  async function startDeepgram(){
+    app.stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const ac=new (window.AudioContext||window.webkitAudioContext)();
+    const an=ac.createAnalyser(); an.fftSize=2048; ac.createMediaStreamSource(app.stream).connect(an);
+    const buf=new Uint8Array(an.fftSize);
+    (function vad(){ requestAnimationFrame(vad);
+      if(!app.active || app.busy || app.muted) return;   // paused while thinking/speaking
+      an.getByteTimeDomainData(buf);
+      let s=0; for(let i=0;i<buf.length;i++){ const v=(buf[i]-128)/128; s+=v*v; }
+      const rms=Math.sqrt(s/buf.length), now=performance.now();
+      if(rms>SPEECH_RMS){ if(!app.recording) startRec(); app.hadSpeech=true; app.silenceAt=0; }
+      else if(app.recording && app.hadSpeech){ if(!app.silenceAt) app.silenceAt=now;
+        else if(now-app.silenceAt>SILENCE_MS) stopRec(); }
+    })();
+  }
+  function startRec(){ app.chunks=[]; app.recording=true; app.hadSpeech=false; app.silenceAt=0;
+    const mt=pickMime();
+    app.recorder = mt ? new MediaRecorder(app.stream,{mimeType:mt}) : new MediaRecorder(app.stream);
+    app.recorder.ondataavailable=e=>{ if(e.data && e.data.size) app.chunks.push(e.data); };
+    app.recorder.onstop=onRecStop; app.recorder.start(); }
+  function stopRec(){ if(app.recording){ app.busy=true; app.recording=false;
+    try{ app.recorder.stop(); }catch(e){ app.busy=false; } } }
+  async function onRecStop(){
+    const blob=new Blob(app.chunks,{type:app.recorder.mimeType||'audio/webm'});
+    if(blob.size<MIN_BYTES){ app.busy=false; if(!app.muted) setState('listening'); return; }
+    setState('thinking');
+    let text='';
+    try{ const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'transcribe',audio:await blobToB64(blob),
+                             mimetype:app.recorder.mimeType||'audio/webm'})});
+      if(r.ok){ const d=await r.json(); text=(d.text||'').trim(); } }catch(e){}
+    if(!text){ app.busy=false; if(!app.muted) setState('listening'); return; }
+    await respond(text);   // app.busy already true
+  }
+
+  // ---- input mode B: browser Web Speech (fallback) ----
+  function buildRec(){ const rec=new SR(); rec.continuous=true; rec.interimResults=true; rec.lang='en-US';
+    rec.onstart=()=>{ app.recognizing=true; };
+    rec.onend=()=>{ app.recognizing=false; if(app.active&&!app.busy&&!app.muted){ try{ rec.start(); }catch(e){} } };
+    rec.onresult=(e)=>{ if(app.busy||app.muted) return; let interim='',final='';
+      for(let i=e.resultIndex;i<e.results.length;i++){ const r=e.results[i];
+        if(r.isFinal) final+=r[0].transcript; else interim+=r[0].transcript; }
+      if(interim) showYou(interim.trim());
+      const text=final.trim(); if(text) beginTurn(text); };
+    return rec; }
+  function startListening(){ if(app.mode!=='webspeech'||!app.rec||app.recognizing) return;
+    try{ app.rec.start(); }catch(e){} }
+
+  // ---- choose the input mode after the start gesture ----
+  async function deepgramAvailable(){
+    try{ const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'transcribe',audio:''})}); return r.ok; }catch(e){ return false; } }
+  async function startSession(){
+    app.active=true;
+    if(navigator.mediaDevices && window.MediaRecorder && await deepgramAvailable()){
+      try{ await startDeepgram(); app.mode='deepgram'; setState('listening'); return; }catch(e){}
+    }
+    if(SR){ app.mode='webspeech'; app.rec=buildRec(); setState('listening'); startListening(); return; }
+    app.mode='none'; app.muted=true; el('mic').textContent='🔇 no mic';
+    showJuno('Voice needs Chrome or a mic. Use the ⌨ text box to chat with '+NAME+'.');
+    el('textwrap').classList.add('show'); setState('idle');
   }
 
   // ---- controls ----
-  el('orb').addEventListener('click', ()=>{ // tap orb to interrupt speech
-    if(app.busy){ stopSpeaking(); } });
-  el('mic').addEventListener('click', ()=>{
-    app.muted=!app.muted; el('mic').textContent = app.muted ? '🔇 muted' : '🎙 listening';
+  el('orb').addEventListener('click', ()=>{ if(app.busy) stopSpeaking(); }); // tap orb to interrupt
+  el('mic').addEventListener('click', ()=>{ app.muted=!app.muted;
+    el('mic').textContent = app.muted ? '🔇 muted' : '🎙 listening';
     if(app.muted){ try{ app.rec && app.rec.stop(); }catch(e){} setState('idle'); }
     else if(app.active && !app.busy){ setState('listening'); startListening(); } });
   el('kbd').addEventListener('click', ()=> el('textwrap').classList.toggle('show'));
   el('text').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ const v=e.target.value.trim();
-    if(v){ e.target.value=''; takeTurn(v); } } });
+    if(v){ e.target.value=''; beginTurn(v); } } });
 
   // ---- start gesture (unlocks mic + audio) ----
-  el('go').addEventListener('click', ()=>{
-    el('overlay').style.display='none';
-    app.active=true;
-    if(SR){ app.rec=buildRec(); setState('listening'); startListening(); }
-    else { setState('idle'); app.muted=true; el('mic').textContent='🔇 no mic';
-      showJuno('Voice needs Chrome. Use the ⌨ text box to chat with '+NAME+'.');
-      el('textwrap').classList.add('show'); }
-    // unlock browser TTS on the gesture
+  el('go').addEventListener('click', ()=>{ el('overlay').style.display='none';
     try{ const u=new SpeechSynthesisUtterance(''); speechSynthesis.speak(u); }catch(e){}
+    startSession();
   });
 })();
 </script>
@@ -354,6 +426,8 @@ class _Handler(BaseHTTPRequestHandler):
     eleven_key = None
     voice_id = ""
     eleven_model = "eleven_turbo_v2_5"
+    deepgram_key = None
+    deepgram_model = "nova-2"
 
     def log_message(self, *args):  # quiet the default per-request stderr noise
         pass
@@ -388,8 +462,9 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(400, b'{"error":"bad request"}', "application/json")
             return
 
-        # One endpoint, action-routed: "speak" returns audio (or 503), else chat JSON.
-        if payload.get("action") == "speak":
+        # One endpoint, action-routed.
+        action = payload.get("action")
+        if action == "speak":
             audio = synthesize(
                 str(payload.get("text", "")), self.eleven_key, self.voice_id, self.eleven_model
             )
@@ -397,6 +472,19 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send(200, audio, "audio/mpeg")
             else:
                 self._send(503, b'{"fallback":true}', "application/json")
+            return
+
+        if action == "transcribe":
+            text = transcribe(
+                _decode_audio(payload.get("audio", "")),
+                self.deepgram_key,
+                self.deepgram_model,
+                str(payload.get("mimetype", "audio/webm")),
+            )
+            if text is None:  # no Deepgram -> page falls back to browser speech
+                self._send(503, b'{"fallback":true}', "application/json")
+            else:
+                self._send(200, json.dumps({"text": text}).encode("utf-8"), "application/json")
             return
 
         message = str(payload.get("message", "")).strip()
@@ -433,6 +521,8 @@ def main() -> None:
     _Handler.eleven_key = os.environ.get("ELEVENLABS_API_KEY")
     _Handler.voice_id = voice.get("elevenlabs_voice_id", "")
     _Handler.eleven_model = voice.get("elevenlabs_model", "eleven_turbo_v2_5")
+    _Handler.deepgram_key = os.environ.get("DEEPGRAM_API_KEY")
+    _Handler.deepgram_model = voice.get("deepgram_model", "nova-2")
 
     server = ThreadingHTTPServer((args.host, args.port), _Handler)
     shown_host = "localhost" if args.host in ("0.0.0.0", "127.0.0.1") else args.host

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from juno.agent import Agent
 from juno.tools.registry import build_registry
-from juno.web import DemoProvider, handle_chat, synthesize
+from juno.web import DemoProvider, handle_chat, synthesize, transcribe, _decode_audio
 
 
 def _demo_agent() -> Agent:
@@ -44,3 +44,20 @@ def test_synthesize_falls_back_without_key():
     assert synthesize("hello", api_key=None, voice_id="", model="m") is None
     assert synthesize("hello", api_key="k", voice_id="", model="m") is None
     assert synthesize("", api_key="k", voice_id="v", model="m") is None
+
+
+def test_transcribe_without_key_signals_fallback():
+    # No Deepgram key -> None -> page falls back to browser speech recognition.
+    assert transcribe(b"\x00\x01", api_key=None, model="nova-2", mimetype="audio/webm") is None
+
+
+def test_transcribe_probe_with_key_returns_empty_not_none():
+    # Empty audio + key present -> "" so the page detects Deepgram is available.
+    assert transcribe(b"", api_key="k", model="nova-2", mimetype="audio/webm") == ""
+
+
+def test_decode_audio_handles_empty_and_bad_input():
+    assert _decode_audio("") == b""
+    assert _decode_audio("not!!base64") == b""
+    import base64
+    assert _decode_audio(base64.b64encode(b"hi").decode()) == b"hi"
