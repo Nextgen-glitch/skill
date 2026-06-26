@@ -22,7 +22,7 @@ request_timeout_seconds = 60
 enabled = false
 push_to_talk_key = "space"
 # ElevenLabs voice id + STT/TTS model names live here, not in code.
-elevenlabs_voice_id = ""
+elevenlabs_voice_id = "UgBBYS2sOqTuMpoF3BR0"
 elevenlabs_model = "eleven_turbo_v2_5"
 deepgram_model = "nova-2"
 
