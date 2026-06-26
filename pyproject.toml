@@ -1,0 +1,35 @@
+[project]
+name = "juno"
+version = "0.1.0"
+description = "Juno — a voice-first prospecting & outreach assistant"
+requires-python = ">=3.10"
+dependencies = [
+  # Tier 1 — the brain
+  "anthropic>=0.40",
+  "python-dotenv>=1.0",
+  # tomllib is stdlib on 3.11+; tomli backport for 3.10
+  "tomli>=2.0; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+# Tier 3 — voice. Kept optional so the text path installs light.
+voice = [
+  "sounddevice>=0.4",
+  "numpy>=1.24",
+  "pynput>=1.7",
+  "deepgram-sdk>=3.0",
+  "elevenlabs>=1.0",
+]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.scripts]
+juno = "juno.main:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["juno*"]

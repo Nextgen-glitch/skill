@@ -1,0 +1,67 @@
+# Juno configuration. Edit values here, not in code.
+# Tiers read the sections they need; later tiers grow this file rather than the code.
+
+[agent]
+name = "Juno"
+# Warm, plain-spoken, brief. Used in the system prompt.
+persona = "warm, plain-spoken, and brief"
+purpose = "a personal prospecting & outreach assistant — finds businesses in a niche I describe, drafts outreach emails for review, and helps manage my calendar"
+
+[model]
+# The brain (Tier 1). Provider is behind the seam in juno/llm.py.
+provider = "anthropic"
+name = "claude-opus-4-8"
+max_tokens = 2048
+temperature = 1.0
+# Network resilience for the provider seam.
+max_retries = 4
+request_timeout_seconds = 60
+
+[voice]
+# Tier 3. Push-to-talk.
+enabled = false
+push_to_talk_key = "space"
+# ElevenLabs voice id + STT/TTS model names live here, not in code.
+elevenlabs_voice_id = ""
+elevenlabs_model = "eleven_turbo_v2_5"
+deepgram_model = "nova-2"
+
+[memory]
+# Tier 4. Human-readable durable facts.
+store_path = "juno/state/memory.json"
+# Load all facts into the prompt for now; cap exists for when memory grows.
+max_facts_in_prompt = 100
+
+[heartbeat]
+# Tier 5. Quiet by default.
+enabled = false
+tick_seconds = 60
+schedule_path = "juno/state/schedule.json"
+inbox_path = "juno/state/inbox.json"
+# Non-urgent surfacing waits for waking hours (24h clock, local time).
+quiet_hours_start = 22
+quiet_hours_end = 8
+# A background action waiting on my approval gives up after this and leaves a note.
+approval_timeout_seconds = 300
+
+[safety]
+# Tier 6. The hard confirmation gate.
+# Tools whose names are listed here always require my explicit yes before running.
+# (Tools also self-declare `consequential=True` in the registry; this is the
+#  config-driven override/allowlist so I can tune it without touching code.)
+confirm_required_tools = [
+  "send_email",
+  "send_message",
+  "enrich_businesses",
+  "create_event",
+  "delete_event",
+  "delete_data",
+  "change_setting",
+]
+audit_log_path = "logs/audit.jsonl"
+
+[killswitch]
+# Tier 6. Flip to true (or `touch juno/state/PAUSED`) to halt all proactive
+# behavior at once. Chat keeps working.
+paused = false
+flag_file = "juno/state/PAUSED"

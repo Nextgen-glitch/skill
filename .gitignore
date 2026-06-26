@@ -3,6 +3,15 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .coverage
+.venv/
+venv/
+
+# Secrets — never commit
+.env
+
+# Juno runtime state (schedule, inbox, memory) and logs
+juno/state/
+logs/
 
 # OS
 .DS_Store
