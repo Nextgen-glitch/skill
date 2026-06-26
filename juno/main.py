@@ -1,12 +1,13 @@
-"""Juno entrypoint — the text REPL (Tier 1).
+"""Juno entrypoint — text REPL (Tier 1) and push-to-talk voice (Tier 3).
 
-Run with `juno` or `python -m juno.main`. The typed interface is the debug path and
-the graceful fallback, and it stays alive forever — voice (Tier 3) is layered on top,
-never a replacement.
+Run with `juno` (text) or `juno --voice` (push-to-talk). The typed interface is the
+debug path and the graceful fallback, and it stays alive forever — voice is layered on
+top of the same brain, never a replacement.
 """
 
 from __future__ import annotations
 
+import argparse
 import sys
 
 from typing import Any
@@ -60,8 +61,85 @@ def run_text_repl() -> int:
         print("\n")
 
 
+def _build_agent(config) -> Agent:
+    provider = build_provider(config)
+    return Agent(provider, build_system_prompt(config), registry=build_registry())
+
+
+def run_voice_repl() -> int:
+    """Push-to-talk loop. Wraps the same agent; the text path is unaffected."""
+    config = Config.load()
+    name = config.get("agent", "name", "Juno")
+
+    try:
+        agent = _build_agent(config)
+        from juno.voice.capture import PushToTalkRecorder
+        from juno.voice.session import VoiceSession
+        from juno.voice.stt import build_transcriber
+        from juno.voice.tts import build_speaker
+    except MissingSecret as err:
+        print(f"{name} can't start in voice mode: {err}")
+        return 1
+    except ModuleNotFoundError as err:
+        print(f"Voice extras not installed ({err.name}). Run: pip install -e \".[voice]\"")
+        return 1
+    except RuntimeError as err:  # e.g. no ElevenLabs voice chosen yet
+        print(f"{name} can't start in voice mode: {err}")
+        return 1
+
+    key = config.get("voice", "push_to_talk_key", "space")
+    recorder = PushToTalkRecorder(
+        key_name=key,
+        on_start=lambda: print("\n  ● listening…", end="", flush=True),
+        on_stop=lambda: print("  ◐ thinking…", flush=True),
+    )
+    session = VoiceSession(
+        agent,
+        transcriber=build_transcriber(config),
+        speaker=build_speaker(config),
+        recorder=recorder,
+        on_transcript=lambda t: print(f"  you (heard) ▸ {t}"),
+        on_tool=_show_tool,
+    )
+
+    # A new push of the talk key while Juno is speaking interrupts the reply.
+    _wire_interrupt(session, key)
+
+    print(f"{name} voice — hold [{key}] to talk, release to send. Ctrl-C to leave.")
+    try:
+        while True:
+            reply = session.take_turn()
+            if reply:
+                print(f"  {name} ▸ {reply}\n")
+    except KeyboardInterrupt:
+        print(f"\n{name}: talk soon.")
+        return 0
+
+
+def _wire_interrupt(session, key_name: str) -> None:
+    """Start a background listener so pressing the talk key cuts off playback."""
+    try:
+        from pynput import keyboard
+    except ModuleNotFoundError:
+        return
+
+    name = key_name.lower()
+    target = getattr(keyboard.Key, name, None) or keyboard.KeyCode.from_char(name)
+
+    def on_press(k):
+        if k == target:
+            session.interrupt()
+
+    keyboard.Listener(on_press=on_press).start()
+
+
 def main() -> None:
-    sys.exit(run_text_repl())
+    parser = argparse.ArgumentParser(prog="juno", description="Juno assistant")
+    parser.add_argument(
+        "--voice", action="store_true", help="push-to-talk voice mode (Tier 3)"
+    )
+    args = parser.parse_args()
+    sys.exit(run_voice_repl() if args.voice else run_text_repl())
 
 
 if __name__ == "__main__":
