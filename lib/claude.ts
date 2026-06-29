@@ -18,11 +18,16 @@ export function claude(): Anthropic {
 export const DEFAULT_MODEL = "claude-sonnet-4-6";
 
 export type TextPart = { type: "text"; text: string };
+export type ImageMediaType =
+  | "image/jpeg"
+  | "image/png"
+  | "image/gif"
+  | "image/webp";
 export type ImagePart = {
   type: "image";
   source:
     | { type: "url"; url: string }
-    | { type: "base64"; media_type: string; data: string };
+    | { type: "base64"; media_type: ImageMediaType; data: string };
 };
 export type UserContent = string | Array<TextPart | ImagePart>;
 
